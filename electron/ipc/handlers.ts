@@ -14,7 +14,8 @@ import * as ActivityQ from '../db/queries/activity';
 import * as SchedulesQ from '../db/queries/schedules';
 import * as SettingsQ from '../db/queries/settings';
 import * as BatchesQ from '../db/queries/batches';
-import { previewCsv, importCsv } from '../services/csvImport';
+import * as LinkedInDataQ from '../db/queries/linkedinData';
+import { previewCsv, importCsv, detectLinkedInExportFormat, autoMapLinkedInExport } from '../services/csvImport';
 import { verifyContact } from '../services/verification';
 import { runBatch, requestStopBatch, BatchContactInput } from '../services/batchRunner';
 import {
@@ -59,12 +60,19 @@ export function registerIpcHandlers(getWin: () => BrowserWindow | null): void {
 
   // Templates
   handle('templates:list', () => TemplatesQ.listTemplates());
-  handle('templates:create', (_e, name, body) => TemplatesQ.createTemplate(name, body));
+  handle('templates:create', (_e, name, body, type) => TemplatesQ.createTemplate(name, body, type));
   handle('templates:update', (_e, id, fields) => TemplatesQ.updateTemplate(id, fields));
   handle('templates:delete', (_e, id) => TemplatesQ.deleteTemplate(id));
 
+  // LinkedIn Data (manual entry snapshot — never scraped/logged in)
+  handle('linkedinData:get', () => LinkedInDataQ.getLinkedInData());
+  handle('linkedinData:update', (_e, fields) => LinkedInDataQ.updateLinkedInData(fields));
+
   // Messages
   handle('messages:list', (_e, contactId) => MessagesQ.listMessages(contactId));
+  handle('messages:create', (_e, input) => MessagesQ.createMessage(input));
+  handle('messages:markManualSent', (_e, id) => MessagesQ.markMessageManualSent(id));
+  handle('messages:markDraftCopied', (_e, id) => MessagesQ.markMessageDraftCopied(id));
 
   // Replies
   handle('replies:list', () => RepliesQ.listReplies());
@@ -98,7 +106,13 @@ export function registerIpcHandlers(getWin: () => BrowserWindow | null): void {
 
   // CSV Import
   handle('csv:preview', (_e, content) => previewCsv(content));
-  handle('csv:import', (_e, content, mapping, sourceFilename) => importCsv(content, mapping, sourceFilename));
+  handle('csv:detectLinkedInExport', (_e, headers) => ({
+    isLinkedInExport: detectLinkedInExportFormat(headers),
+    mapping: detectLinkedInExportFormat(headers) ? autoMapLinkedInExport(headers) : null,
+  }));
+  handle('csv:import', (_e, content, mapping, sourceFilename, connectionStatus) =>
+    importCsv(content, mapping, sourceFilename, connectionStatus),
+  );
   handle('csv:openAndRead', async () => {
     const result = await dialog.showOpenDialog({
       title: 'Import Connections CSV',
@@ -135,7 +149,9 @@ function computeDashboardMetrics() {
   const totalImported = count('SELECT COUNT(*) as c FROM contacts');
   const qualified = count("SELECT COUNT(*) as c FROM contacts WHERE qualification_reason IS NOT NULL AND qualification_reason != ''");
   const verified = count("SELECT COUNT(*) as c FROM contacts WHERE crm_pipeline_stage = 'Verified'");
-  const sent = count("SELECT COUNT(*) as c FROM outreach_messages WHERE status = 'Sent (mock)'");
+  // Counts both legacy Mock Mode sends and the current manual
+  // copy-to-clipboard workflow's "Mark as Sent" confirmations.
+  const sent = count("SELECT COUNT(*) as c FROM outreach_messages WHERE status IN ('Sent (mock)', 'Sent (Manual)')");
   const replies = count('SELECT COUNT(*) as c FROM replies');
   const positiveReplies = count("SELECT COUNT(*) as c FROM replies WHERE category = 'Positive/Interested'");
   const interested = count("SELECT COUNT(*) as c FROM contacts WHERE crm_pipeline_stage = 'Interested'");
@@ -151,7 +167,10 @@ function computeDashboardMetrics() {
   const failedMessages = count("SELECT COUNT(*) as c FROM outreach_messages WHERE status = 'Failed'");
 
   const today = new Date().toISOString().slice(0, 10);
-  const sentToday = count("SELECT COUNT(*) as c FROM outreach_messages WHERE status = 'Sent (mock)' AND sent_at LIKE ?", [`${today}%`]);
+  const sentToday = count(
+    "SELECT COUNT(*) as c FROM outreach_messages WHERE status IN ('Sent (mock)', 'Sent (Manual)') AND sent_at LIKE ?",
+    [`${today}%`],
+  );
   const repliesToday = count('SELECT COUNT(*) as c FROM replies WHERE received_at LIKE ?', [`${today}%`]);
 
   return {
