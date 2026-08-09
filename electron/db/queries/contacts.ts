@@ -64,6 +64,7 @@ export interface UpsertContactInput {
   qualification_reason?: string | null;
   crm_pipeline_stage?: string;
   contact_status?: string | null;
+  pronouns_found?: string | null;
 }
 
 export type ImportOutcome = 'imported' | 'updated' | 'duplicate' | 'invalid';
@@ -90,7 +91,8 @@ export function upsertContactFromImport(
       `UPDATE contacts SET
         full_name = ?, csv_company = ?, csv_position = ?, email = COALESCE(?, email),
         phone = COALESCE(?, phone), connected_on = COALESCE(?, connected_on),
-        source_filename = ?, imported_at = ?, contact_status = COALESCE(?, contact_status), updated_at = ?
+        source_filename = ?, imported_at = ?, contact_status = COALESCE(?, contact_status),
+        pronouns_found = COALESCE(?, pronouns_found), updated_at = ?
        WHERE id = ?`,
     ).run(
       input.full_name,
@@ -102,6 +104,7 @@ export function upsertContactFromImport(
       input.source_filename ?? existing.source_filename,
       now,
       input.contact_status ?? null,
+      input.pronouns_found ?? null,
       now,
       existing.id,
     );
@@ -113,8 +116,8 @@ export function upsertContactFromImport(
     `INSERT INTO contacts (
       id, full_name, linkedin_url, linkedin_url_normalized, csv_company, csv_position,
       email, phone, connected_on, source_filename, imported_at,
-      qualification_reason, crm_pipeline_stage, contact_status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      qualification_reason, crm_pipeline_stage, contact_status, pronouns_found, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.full_name,
@@ -130,6 +133,7 @@ export function upsertContactFromImport(
     input.qualification_reason ?? null,
     input.crm_pipeline_stage ?? 'Imported',
     input.contact_status ?? 'Not Connected',
+    input.pronouns_found ?? null,
     now,
     now,
   );
