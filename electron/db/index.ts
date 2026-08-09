@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import { app } from 'electron';
 import { v4 as uuid } from 'uuid';
-import { MESSAGE_TEMPLATES } from '../../shared/templates';
+import { MESSAGE_TEMPLATES, INVITATION_NOTE_TEMPLATES } from '../../shared/templates';
 
 let db: Database.Database | null = null;
 
@@ -47,11 +47,31 @@ function seedTemplates(database: Database.Database): void {
   const count = (database.prepare('SELECT COUNT(*) as c FROM message_templates').get() as any).c;
   if (count > 0) return;
   const insert = database.prepare(
-    'INSERT INTO message_templates (id, name, body, is_active) VALUES (?, ?, ?, 1)',
+    'INSERT INTO message_templates (id, name, body, type, is_active) VALUES (?, ?, ?, ?, 1)',
   );
   const seedAll = database.transaction(() => {
     for (const t of MESSAGE_TEMPLATES) {
-      insert.run(t.id, t.name, t.body);
+      insert.run(t.id, t.name, t.body, t.type);
+    }
+  });
+  seedAll();
+}
+
+// Backfills the 3 short "Invitation Note" templates onto installs that
+// already had message_templates rows before this feature shipped (so
+// seedTemplates()'s count > 0 short-circuit above would otherwise skip
+// them forever).
+function seedInvitationTemplates(database: Database.Database): void {
+  const count = (
+    database.prepare("SELECT COUNT(*) as c FROM message_templates WHERE type = 'Invitation Note'").get() as any
+  ).c;
+  if (count > 0) return;
+  const insert = database.prepare(
+    'INSERT OR IGNORE INTO message_templates (id, name, body, type, is_active) VALUES (?, ?, ?, ?, 1)',
+  );
+  const seedAll = database.transaction(() => {
+    for (const t of INVITATION_NOTE_TEMPLATES) {
+      insert.run(t.id, t.name, t.body, t.type);
     }
   });
   seedAll();
@@ -76,6 +96,7 @@ export function getDb(): Database.Database {
   db.pragma('foreign_keys = ON');
   runMigrations(db);
   seedTemplates(db);
+  seedInvitationTemplates(db);
   seedDefaultSchedule(db);
   return db;
 }
