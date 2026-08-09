@@ -4,12 +4,17 @@ A local-first, Windows-first desktop CRM and LinkedIn outreach **drafting and
 tracking** tool for Getlux (collections-services company). Built with
 Electron + React + TypeScript + Vite + SQLite (`better-sqlite3`).
 
-> **Compliance first.** This application never automates LinkedIn sending,
-> scraping, or bypasses any LinkedIn protection. It only ships a **mock
-> mode** that simulates verification/sending with randomized in-memory
-> results. Every "send" in this app writes to the local SQLite database
-> only — there is no network call to linkedin.com anywhere in this
-> codebase. See [Compliance & mock mode](#compliance--mock-mode) below.
+> **Compliance first.** This application never logs into LinkedIn, never
+> scrapes LinkedIn, and never automates sending anything to LinkedIn. It
+> only drafts messages, which a human copies and pastes into LinkedIn
+> themselves, then manually confirms as sent (**Copy to Clipboard** →
+> **Mark as Sent**, see "LinkedIn Data tab & manual copy-paste draft
+> workflow" below). LinkedIn connection numbers are entered by hand or
+> imported from LinkedIn's own official data-export tool — never scraped.
+> Profile verification still ships a **mock mode** that simulates results
+> with randomized in-memory data. There is no network call to
+> linkedin.com anywhere in this codebase. See
+> [Compliance & mock mode](#compliance--mock-mode) below.
 
 ## A note on this sandbox build
 
@@ -79,13 +84,13 @@ electron/            Main process (Node) — Electron entry, IPC, SQLite, servic
   preload.ts           contextBridge — exposes a typed `window.getlux` API only
   db/
     index.ts            Opens better-sqlite3, runs migrations, seeds templates
-    migrations/          001_init.sql — full schema
-    queries/              One module per entity (contacts, companies, campaigns, …)
+    migrations/          001_init.sql — full schema; 002_template_types.sql — adds template `type`
+    queries/              One module per entity (contacts, companies, campaigns, …, linkedinData)
   ipc/handlers.ts       All ipcMain.handle() registrations, wraps queries/services
   services/
-    csvImport.ts         CSV parsing, field mapping, dedupe, import summary
+    csvImport.ts         CSV parsing, field mapping, LinkedIn-export detection, dedupe, import summary
     verification.ts      (Mock) LinkedIn profile verification -> DB writes
-    batchRunner.ts        Batch send loop: per-contact send, stop-on-block, logging
+    batchRunner.ts        Legacy Mock Mode send loop — no longer called by the UI, see below
     linkedin/
       adapter.ts           The LinkedInAdapter INTERFACE — compliance-critical, see below
       mockAdapter.ts        The ONLY implementation shipped — pure in-memory simulation
@@ -93,17 +98,17 @@ electron/            Main process (Node) — Electron entry, IPC, SQLite, servic
 src/                 Renderer (React, loaded by Vite/Electron BrowserWindow)
   api.ts               Thin client wrapping window.getlux, unwraps {ok,data}/{ok,error}
   App.tsx / main.tsx    Router shell, sidebar layout, theme
-  pages/                One file per screen (Dashboard, Import CSV, Contacts, …)
+  pages/                One file per screen (Dashboard, LinkedIn Data, Import CSV, Contacts, …)
   components/           Sidebar, ComplianceModal, StageBadge
   state/store.ts         zustand store (theme, compliance ack)
 
 shared/              Pure TS logic, imported by BOTH electron/ and src/, and
                      unit-tested directly (no Electron/DOM API usage allowed here)
-  types.ts             Shared entity/pipeline/reply types
+  types.ts             Shared entity/pipeline/reply types, TemplateType, LinkedInDataSnapshot
   linkedinUrl.ts        normalizeLinkedInUrl()
   qualification.ts       isQualified() + keyword list
   greeting.ts             selectGreeting() — explicit pronouns only, never inferred
-  templates.ts             10 message templates + renderTemplate()
+  templates.ts             10 Connection Message + 3 Invitation Note templates + renderTemplate()
   dedupe.ts                 dedupeContacts() by normalized LinkedIn URL
   replyClassifier.ts         classifyReply() — keyword heuristic, requiresUserReview: true always
   pipeline.ts                 canTransition() + all metrics formulas
@@ -123,13 +128,20 @@ sample-data/         ~25-row sample Connections.csv (fictional people)
   implementation shipped. It uses `Math.random()` to simulate realistic
   outcomes (verified/unverifiable, sent/CAPTCHA/rate-limit/login-required)
   with small `setTimeout` delays for UI realism — no network calls at all.
-- The Batch Review & Send screen requires an explicit "Confirm and Send"
-  click before any message is recorded, shows a live progress panel, and
-  has a visible **Stop** button. On a simulated CAPTCHA/rate-limit/login
-  block, the whole batch stops immediately (per spec) and the reason is
-  logged to the Audit Log.
-- The first-launch compliance modal shows the required text verbatim and is
-  stored as acknowledged in `app_settings` (resettable from Settings).
+- The **current** Batch Review & Send screen (see "LinkedIn Data tab &
+  manual copy-paste draft workflow" below) requires an explicit **Copy to
+  Clipboard** click per contact, then a separate explicit **Mark as Sent**
+  click after the human has actually sent the message themselves inside
+  LinkedIn — nothing is ever recorded as sent automatically. The older
+  Mock Mode simulator described above (`batchRunner.ts`/`mockAdapter.ts`)
+  still exists in the codebase and is still network-free, but the UI no
+  longer drives it.
+- The first-launch compliance modal shows the required text verbatim,
+  explicitly states that LinkedIn connection data is entered manually or
+  imported via LinkedIn's own official data-export tool (never scraped,
+  never logged into), and that all messages are drafted for manual
+  copy-paste sending only. It's stored as acknowledged in `app_settings`
+  (resettable from Settings).
 
 ### Swapping in a real LinkedIn adapter later (out of scope for this build)
 
@@ -165,19 +177,96 @@ run automatically on first launch (tracked in a `_migrations` table).
 | `follow_up_tasks` | Follow-up due dates, status, outcome |
 | `activity_log` | Full audit trail (imports, verifications, sends, failures, stop reasons) — also powers the Audit Log screen |
 | `schedules` | Single-row daily scheduler config (disabled by default) |
-| `app_settings` | Key/value settings, incl. compliance-modal acknowledgement |
+| `app_settings` | Key/value settings, incl. compliance-modal acknowledgement and the manually-entered LinkedIn Data snapshot |
 
 `message_templates` is seeded from `shared/templates.ts` on first launch so
-the DB and the unit-tested template source never drift apart.
+the DB and the unit-tested template source never drift apart. Since
+`electron/db/migrations/002_template_types.sql`, each template row has a
+`type` column (`'Invitation Note'` or `'Connection Message'`) — see below.
+
+## LinkedIn Data tab & manual copy-paste draft workflow
+
+Two features work together to keep this app strictly "draft-only," never
+touching linkedin.com:
+
+**LinkedIn Data screen** (`src/pages/LinkedInData.tsx`, `/linkedin-data`
+route) — a manual-entry form for Total Connections, Pending Sent Requests,
+and Pending Received Requests. You type in what you see in your own
+LinkedIn account (or copy it from LinkedIn's own official data-export
+tool); "Last updated" is set automatically, server-side, when you click
+Save — it can't be backdated by the renderer. These numbers are persisted
+as a single JSON blob in the existing `app_settings` key/value table (see
+`electron/db/queries/linkedinData.ts`) — no scraping, no login, no new
+table needed. The Dashboard shows these same four numbers as metric cards
+and flags a "Update your LinkedIn numbers" badge once the data is more
+than 7 days old.
+
+**Two template types** (`shared/templates.ts`): `CONNECTION_MESSAGE_TEMPLATES`
+(the original 10, for contacts already 1st-degree connected) and
+`INVITATION_NOTE_TEMPLATES` (3 new, short templates for contacts who are
+not yet connected — LinkedIn caps invite notes at ~300 characters, enforced
+visually in the Templates screen). Both reuse the exact same
+`selectGreeting()` explicit-pronoun-only rule from `shared/greeting.ts` —
+"Hi Sir," only if the contact's pronoun field is explicitly `He/Him`, "Hi
+Ma'am," only if explicitly `She/Her`, otherwise generic "Hello," — never
+inferred from a name. Which type applies to a given contact is decided by
+`contact_status` (`'Connected'` / `'Not Connected'`), which is set on CSV
+import — see below.
+
+**Import CSV** now supports two source formats, auto-detected
+case-insensitively from the header row: LinkedIn's own official
+"Connections" data export (Settings & Privacy → Data Privacy → Get a copy
+of your data → columns `First Name, Last Name, URL, Email Address, Company,
+Position, Connected On`) marks contacts `contact_status = 'Connected'`, and
+a generic prospect list marks them `'Not Connected'`. Either way, this only
+ever reads a local CSV file you've already downloaded yourself — nothing in
+this app logs into linkedin.com or scrapes it.
+
+**Batch Review & Send** (`src/pages/BatchSend.tsx`) auto-selects the
+correct draft type per contact (Invitation Note vs Connection Message)
+based on `contact_status`. For each contact you can review/edit the text,
+then:
+1. Click **Copy to Clipboard** — writes the draft to your OS clipboard via
+   `navigator.clipboard.writeText` and sets the contact's pipeline stage to
+   `Draft Copied — Awaiting Manual Send`.
+2. Paste it into LinkedIn yourself and send it, inside your own logged-in
+   LinkedIn tab.
+3. Come back and click **Mark as Sent** — the *only* action in this entire
+   codebase that sets a contact's stage to `Outreach Sent`. It is always a
+   deliberate, explicit click by a human, never automatic, and never
+   gated behind anything that could fire on its own.
+
+The legacy Mock Mode batch simulator (`electron/services/batchRunner.ts`,
+`electron/services/linkedin/mockAdapter.ts`) still exists and is still
+network-request-free, but the Batch Review & Send screen no longer calls
+it — it's superseded by the copy-to-clipboard workflow above.
+
+## Standalone demo (`docs/index.html`, GitHub Pages)
+
+`docs/index.html` (mirrored 1:1 from `getlux-crm-demo.html` at the repo
+root) is a single-file, dependency-free HTML/CSS/JS preview of this same
+product logic — no build step, deployed directly via GitHub Pages. It
+mirrors the same explicit-pronoun-only greeting rule, the same
+Invitation Note / Connection Message template split with the same LinkedIn
+character-limit note, the same LinkedIn-export-vs-generic-prospect CSV
+detection, and the same copy-to-clipboard + manual "Mark as Sent"
+workflow — no auto-progress "sending" simulation. It's the one file in
+this project that deliberately uses `localStorage` (for LinkedIn Data
+numbers, template edits, and demo contacts), since it's a real deployed
+static webpage, not an Electron app with a database. Whenever the demo's
+logic changes, keep both copies in sync.
 
 ## Testing
 
 All business logic in `shared/` is pure (no Electron/DOM/network APIs) and
 covered by `tests/*.test.ts` (Vitest): LinkedIn URL normalization,
-qualification keyword matching, greeting selection, all 10 templates +
-renderer, contact dedupe, reply classification, pipeline transition rules,
-all five metrics formulas (with divide-by-zero guards), and the daily
-schedule calculator (including IST-specific and lastRunAt-aware cases).
+qualification keyword matching, greeting selection, all 10 Connection
+Message templates + all 3 Invitation Note templates (including a
+character-limit check) + the renderer, contact dedupe, reply
+classification, pipeline transition rules (including the new `Draft
+Copied — Awaiting Manual Send` stage), all five metrics formulas (with
+divide-by-zero guards), and the daily schedule calculator (including
+IST-specific and lastRunAt-aware cases).
 
 ## Known simplifications
 
