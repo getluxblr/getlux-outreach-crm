@@ -49,6 +49,7 @@
   "build": {
     "appId": "com.getlux.outreachcrm",
     "productName": "Getlux Outreach CRM",
+    "publish": null,
     "directories": {
       "output": "release"
     },
