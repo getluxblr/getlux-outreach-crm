@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import fs from 'node:fs';
 import Papa from 'papaparse';
 import { getDb } from '../db';
@@ -15,7 +15,7 @@ import * as SchedulesQ from '../db/queries/schedules';
 import * as SettingsQ from '../db/queries/settings';
 import * as BatchesQ from '../db/queries/batches';
 import * as LinkedInDataQ from '../db/queries/linkedinData';
-import { previewCsv, importCsv, detectLinkedInExportFormat, autoMapLinkedInExport } from '../services/csvImport';
+import { previewCsv, importCsv, detectLinkedInExportFormat, autoMapLinkedInExport, createManualContact } from '../services/csvImport';
 import { verifyContact } from '../services/verification';
 import { runBatch, requestStopBatch, BatchContactInput } from '../services/batchRunner';
 import {
@@ -42,6 +42,7 @@ export function registerIpcHandlers(getWin: () => BrowserWindow | null): void {
   handle('contacts:update', (_e, id, fields) => ContactsQ.updateContact(id, fields));
   handle('contacts:delete', (_e, id) => ContactsQ.deleteContact(id));
   handle('contacts:countByStage', () => ContactsQ.countContactsByStage());
+  handle('contacts:createManual', (_e, input) => createManualContact(input));
 
   // Companies
   handle('companies:list', (_e, search) => CompaniesQ.listCompanies(search));
@@ -123,6 +124,17 @@ export function registerIpcHandlers(getWin: () => BrowserWindow | null): void {
     const filePath = result.filePaths[0];
     const content = fs.readFileSync(filePath, 'utf-8');
     return { filePath, filename: filePath.split(/[\\/]/).pop(), content };
+  });
+
+  // Shell — opens a URL in the user's normal default browser (a plain new
+  // tab), exactly like clicking a hyperlink. Never used to log into
+  // LinkedIn, click anything on linkedin.com, or automate any site.
+  handle('shell:openExternal', async (_e, url: string) => {
+    if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+      throw new Error('Only http(s) URLs can be opened.');
+    }
+    await shell.openExternal(url);
+    return { opened: true };
   });
 
   // Verification
