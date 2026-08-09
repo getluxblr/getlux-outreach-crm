@@ -41,12 +41,15 @@ export const api = {
   },
   templates: {
     list: () => unwrap(getApi().templates.list()),
-    create: (name: string, body: string) => unwrap(getApi().templates.create(name, body)),
+    create: (name: string, body: string, type?: string) => unwrap(getApi().templates.create(name, body, type)),
     update: (id: string, fields: any) => unwrap(getApi().templates.update(id, fields)),
     delete: (id: string) => unwrap(getApi().templates.delete(id)),
   },
   messages: {
     list: (contactId?: string) => unwrap(getApi().messages.list(contactId)),
+    create: (input: any) => unwrap(getApi().messages.create(input)),
+    markManualSent: (id: string) => unwrap(getApi().messages.markManualSent(id)),
+    markDraftCopied: (id: string) => unwrap(getApi().messages.markDraftCopied(id)),
   },
   replies: {
     list: () => unwrap(getApi().replies.list()),
@@ -79,8 +82,9 @@ export const api = {
   },
   csv: {
     preview: (content: string) => unwrap(getApi().csv.preview(content)),
-    import: (content: string, mapping: any, sourceFilename: string) =>
-      unwrap(getApi().csv.import(content, mapping, sourceFilename)),
+    detectLinkedInExport: (headers: string[]) => unwrap(getApi().csv.detectLinkedInExport(headers)),
+    import: (content: string, mapping: any, sourceFilename: string, connectionStatus?: string) =>
+      unwrap(getApi().csv.import(content, mapping, sourceFilename, connectionStatus)),
     openAndRead: () => unwrap(getApi().csv.openAndRead()),
   },
   verification: {
@@ -95,6 +99,10 @@ export const api = {
   },
   dashboard: {
     metrics: () => unwrap(getApi().dashboard.metrics()),
+  },
+  linkedinData: {
+    get: () => unwrap(getApi().linkedinData.get()),
+    update: (fields: any) => unwrap(getApi().linkedinData.update(fields)),
   },
   exportData: {
     contactsCsv: () => unwrap(getApi().exportData.contactsCsv()),

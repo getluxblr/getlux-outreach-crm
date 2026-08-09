@@ -5,6 +5,7 @@ import ComplianceModal from './components/ComplianceModal';
 import { useUiStore } from './state/store';
 
 import Dashboard from './pages/Dashboard';
+import LinkedInData from './pages/LinkedInData';
 import ImportCsv from './pages/ImportCsv';
 import Contacts from './pages/Contacts';
 import Companies from './pages/Companies';
@@ -38,6 +39,7 @@ export default function App(): JSX.Element {
         <ComplianceModal />
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/linkedin-data" element={<LinkedInData />} />
           <Route path="/import" element={<ImportCsv />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/companies" element={<Companies />} />
