@@ -49,6 +49,13 @@ export class MockLinkedInAdapter implements LinkedInAdapter {
     };
   }
 
+  // NOTE: sendMessage() is legacy Mock Mode plumbing. It is still exposed
+  // via `batch:run`/electron/services/batchRunner.ts for backward
+  // compatibility and tests, but the Batch Review & Send screen
+  // (src/pages/BatchSend.tsx) no longer calls it — that screen now uses an
+  // explicit copy-to-clipboard + manual "Mark as Sent" workflow instead, so
+  // there is no simulated/automated "sending" happening anywhere in the
+  // active UI. This method still performs zero network requests.
   async sendMessage(_linkedinUrl: string, _message: string): Promise<SendMessageResult> {
     await delay(200 + Math.random() * 400);
 
