@@ -1,13 +1,16 @@
 import type { MessageTemplate } from './types';
 
-// 10 outreach message templates. {{GREETING}} and {{COMPANY}} are the only
-// personalization placeholders — all other facts (services, client list,
-// sender details) are fixed and must never be invented or altered per
-// recipient, per the product spec.
-export const MESSAGE_TEMPLATES: MessageTemplate[] = [
+// 10 "Connection Message" templates — used for contacts who are already a
+// 1st-degree LinkedIn connection (connectionStatus/contact_status ===
+// 'Connected'). {{GREETING}} and {{COMPANY}} are the only personalization
+// placeholders — all other facts (services, client list, sender details)
+// are fixed and must never be invented or altered per recipient, per the
+// product spec.
+export const CONNECTION_MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-1',
     name: 'Collections role — direct',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I noticed your role in collections at {{COMPANY}}.\n\n' +
@@ -19,6 +22,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-2',
     name: 'Collections or recovery — agency support',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'Saw that you are currently handling collections or recovery at {{COMPANY}}.\n\n' +
@@ -30,6 +34,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-3',
     name: 'Collections role — profile and details',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I came across your collections role at {{COMPANY}}.\n\n' +
@@ -41,6 +46,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-4',
     name: 'Recovery operations — capacity focus',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I noticed your work in recovery operations at {{COMPANY}}.\n\n' +
@@ -52,6 +58,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-5',
     name: 'Credit/lending operations — introduction',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'Your background in credit and lending operations at {{COMPANY}} caught my attention.\n\n' +
@@ -63,6 +70,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-6',
     name: 'Receivables / delinquency management',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I saw that you work on receivables and delinquency management at {{COMPANY}}.\n\n' +
@@ -74,6 +82,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-7',
     name: 'Banking / financial services — introduction',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I came across your profile and your work in financial services at {{COMPANY}}.\n\n' +
@@ -85,6 +94,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-8',
     name: 'Field collections — regional support',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'Noticed your involvement with field and tele-calling collections at {{COMPANY}}.\n\n' +
@@ -96,6 +106,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-9',
     name: 'Loan servicing / repayment — short intro',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I noticed you work on loan servicing and repayment at {{COMPANY}}.\n\n' +
@@ -107,6 +118,7 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
   {
     id: 'template-10',
     name: 'Risk / payment recovery — partnership note',
+    type: 'Connection Message',
     body:
       '{{GREETING}}\n\n' +
       'I came across your work in risk and payment recovery at {{COMPANY}}.\n\n' +
@@ -115,6 +127,48 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
       'If {{COMPANY}} is evaluating collection-agency support, I would be glad to share our profile and next steps.\n\n' +
       'Regards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in',
   },
+];
+
+// 3 "Invitation Note" templates — used for prospects who are NOT yet a
+// LinkedIn connection (connectionStatus/contact_status === 'Not Connected'
+// or unset). LinkedIn caps invite notes at ~300 characters, so these are
+// intentionally short. Same {{GREETING}}/{{COMPANY}} placeholders, same
+// explicit-pronoun-only greeting rule (see shared/greeting.ts) — never
+// inferred from name.
+export const INVITATION_NOTE_TEMPLATES: MessageTemplate[] = [
+  {
+    id: 'invite-1',
+    name: 'Invitation — collections/recovery support',
+    type: 'Invitation Note',
+    body:
+      '{{GREETING}} I support NBFCs and lenders with collections and recovery ' +
+      'services at Getlux. Would love to connect and share how we might help ' +
+      '{{COMPANY}}.',
+  },
+  {
+    id: 'invite-2',
+    name: 'Invitation — tele-calling collections partner',
+    type: 'Invitation Note',
+    body:
+      '{{GREETING}} Noticed your work in collections/recovery. I\'m with Getlux, ' +
+      'a pan-India tele-calling collections partner for NBFCs and lenders. Open ' +
+      'to connecting?',
+  },
+  {
+    id: 'invite-3',
+    name: 'Invitation — short introduction',
+    type: 'Invitation Note',
+    body:
+      '{{GREETING}} I\'m Sabari from Getlux — we help NBFCs and lenders with ' +
+      'pan-India collections support. Would be great to connect with you.',
+  },
+];
+
+// Combined list, used for seeding the SQLite message_templates table so the
+// DB and this file never drift apart.
+export const MESSAGE_TEMPLATES: MessageTemplate[] = [
+  ...CONNECTION_MESSAGE_TEMPLATES,
+  ...INVITATION_NOTE_TEMPLATES,
 ];
 
 /**

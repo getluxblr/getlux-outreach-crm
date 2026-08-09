@@ -4,6 +4,19 @@
 
 export type Pronouns = 'He/Him' | 'She/Her' | null | undefined;
 
+// Whether a contact is already a 1st-degree LinkedIn connection or not.
+// Determines which template type (Invitation Note vs Connection Message)
+// applies. Stored in the existing `contact_status` column — no schema
+// change needed. Set manually on import (generic prospect CSV = 'Not
+// Connected', LinkedIn's own Connections.csv export = 'Connected'); never
+// inferred by scraping or logging into LinkedIn.
+export type ConnectionStatus = 'Connected' | 'Not Connected';
+
+export type TemplateType = 'Invitation Note' | 'Connection Message';
+
+// LinkedIn invite notes are capped at ~300 characters by LinkedIn itself.
+export const INVITATION_NOTE_CHAR_LIMIT = 300;
+
 export type PipelineStage =
   | 'Imported'
   | 'Qualified'
@@ -12,6 +25,7 @@ export type PipelineStage =
   | 'Queued'
   | 'Draft Ready'
   | 'Approved'
+  | 'Draft Copied — Awaiting Manual Send'
   | 'Outreach Sent'
   | 'Delivered / Sent Successfully'
   | 'Replied'
@@ -38,6 +52,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   'Queued',
   'Draft Ready',
   'Approved',
+  'Draft Copied — Awaiting Manual Send',
   'Outreach Sent',
   'Delivered / Sent Successfully',
   'Replied',
@@ -124,6 +139,18 @@ export interface MessageTemplate {
   id: string;
   name: string;
   body: string;
+  type: TemplateType;
+}
+
+// Manually-entered LinkedIn account snapshot (Settings screen / dashboard
+// cards). Entered by hand from what the user sees in their own LinkedIn
+// account, or from LinkedIn's own data-export tool — this app never logs
+// into LinkedIn or reads these numbers itself.
+export interface LinkedInDataSnapshot {
+  totalConnections: number;
+  pendingSent: number;
+  pendingReceived: number;
+  lastUpdated: string | null; // ISO string, set automatically on save
 }
 
 export interface ClassifyReplyResult {

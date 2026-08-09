@@ -17,10 +17,15 @@ const TRANSITIONS: Record<PipelineStage, PipelineStage[]> = {
   Imported: ['Qualified', 'Skipped', 'Do Not Contact'],
   Qualified: ['Verification Pending', 'Skipped', 'Do Not Contact'],
   'Verification Pending': ['Verified', 'Skipped', 'Failed', 'Do Not Contact'],
-  Verified: ['Queued', 'Existing Conversation', 'Skipped', 'Do Not Contact'],
+  Verified: ['Queued', 'Draft Copied — Awaiting Manual Send', 'Existing Conversation', 'Skipped', 'Do Not Contact'],
   Queued: ['Draft Ready', 'Skipped', 'Do Not Contact'],
   'Draft Ready': ['Approved', 'Skipped', 'Do Not Contact'],
-  Approved: ['Outreach Sent', 'Skipped', 'Failed', 'Do Not Contact'],
+  Approved: ['Outreach Sent', 'Draft Copied — Awaiting Manual Send', 'Skipped', 'Failed', 'Do Not Contact'],
+  // Set when the user has copied a drafted message to their clipboard and
+  // is expected to paste/send it themselves in their own LinkedIn tab, then
+  // come back and explicitly click "Mark as Sent" (see BatchSend.tsx).
+  // Never entered or exited automatically.
+  'Draft Copied — Awaiting Manual Send': ['Outreach Sent', 'Skipped', 'Do Not Contact'],
   'Outreach Sent': ['Delivered / Sent Successfully', 'Failed', 'Existing Conversation'],
   'Delivered / Sent Successfully': ['Replied', 'Follow-up Required'],
   Replied: ['Interested', 'Not Interested', 'Follow-up Required', 'Do Not Contact'],
