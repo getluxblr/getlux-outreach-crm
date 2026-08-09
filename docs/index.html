@@ -55,24 +55,23 @@
   .badge.blue{background:var(--blue-bg);color:var(--blue);}
   .badge.amber{background:var(--amber-bg);color:var(--amber);}
   .badge.red{background:var(--red-bg);color:var(--red);}
-  .row{display:flex;gap:10px;align-items:center;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
   .grow{flex:1;}
-  input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;}
+  input[type=text],input[type=number],input[type=file],select,textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;}
   textarea{width:100%;min-height:150px;resize:vertical;}
+  label.field-label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
   .kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
   .kcol{min-width:190px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;}
   .kcol h4{font-size:12px;margin:0 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
   .kcard{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12.5px;}
   .kcard b{display:block;font-size:12.5px;}
   .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:50;}
-  .modal{background:var(--panel);border-radius:12px;padding:24px;max-width:520px;width:92%;border:1px solid var(--border);}
+  .modal{background:var(--panel);border-radius:12px;padding:24px;max-width:560px;width:92%;border:1px solid var(--border);max-height:88vh;overflow-y:auto;}
   .modal h2{margin-top:0;font-size:17px;}
   .pill-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
   .pill{padding:6px 12px;border-radius:20px;font-size:12.5px;border:1px solid var(--border);cursor:pointer;color:var(--muted);}
   .pill.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
   .draft-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12.5px;white-space:pre-wrap;line-height:1.5;}
-  .progress-wrap{background:var(--bg);border:1px solid var(--border);border-radius:8px;height:8px;overflow:hidden;margin:10px 0;}
-  .progress-bar{height:100%;background:var(--accent);width:0%;transition:width .3s;}
   .toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;}
   .small{font-size:11.5px;color:var(--muted);}
   .compliance-banner{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:16px;}
@@ -94,21 +93,58 @@
 <div id="modalRoot"></div>
 
 <script>
-/* ---------------- MOCK DATA ---------------- */
-const templates = [
-{id:1,name:"Template 1",body:"Hi {{GREETING}}\n\nI noticed your role in collections at {{COMPANY}}.\n\nGetlux supports NBFCs and lending businesses with professional collection support, including tele-calling and field-collection requirements. We currently support organizations such as IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nOur pan-India tele-calling team includes 150+ trained callers, supported by offices across Bangalore, Tamil Nadu, and Kerala.\n\nIf collection support may be useful for {{COMPANY}}, please let us know. We would be happy to share our company profile.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:2,name:"Template 2",body:"Hi {{GREETING}}\n\nSaw that you are currently handling collections or recovery at {{COMPANY}}.\n\nGetlux provides collection-agency support for NBFCs, lenders, and financial-service companies. Our team manages pan-India tele-calling collections through 150+ trained tele-callers, with operational presence in Bangalore, Tamil Nadu, and Kerala.\n\nWe support companies including IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould it be okay to share the Getlux company profile for your reference?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:3,name:"Template 3",body:"Hi {{GREETING}}\n\nI came across your collections role at {{COMPANY}}.\n\nGetlux helps lending and NBFC businesses strengthen their collection operations through pan-India tele-calling support. We have 150+ trained collection callers and offices across Bangalore, Tamil Nadu, and Kerala.\n\nOur experience includes supporting organizations such as IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nIf you are exploring collection-agency support for {{COMPANY}}, I can share our profile and service details.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:4,name:"Template 4",body:"Hello {{GREETING}}\n\nYour experience in collections at {{COMPANY}} caught my attention.\n\nGetlux is a collection-support partner for NBFCs and lenders, running pan-India tele-calling operations with 150+ trained callers from offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe've worked with organizations like IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nHappy to send over our profile if it's relevant for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:5,name:"Template 5",body:"Hi {{GREETING}}\n\nNoticed you lead collections-related work at {{COMPANY}}.\n\nAt Getlux, we support NBFCs, banks, and fintechs with pan-India tele-calling collections — 150+ trained tele-callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nOrganizations we support include IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nLet me know if a quick profile share would be useful for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:6,name:"Template 6",body:"Hi {{GREETING}}\n\nCame across your collections/recovery profile at {{COMPANY}}.\n\nGetlux provides pan-India tele-calling collection support for NBFCs and lenders, with 150+ trained callers across offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe currently support IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould you be open to a short profile share for {{COMPANY}}?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:7,name:"Template 7",body:"Hi {{GREETING}}\n\nYour work in collections at {{COMPANY}} stood out.\n\nGetlux supports lending and NBFC businesses with tele-calling and field-collection capacity — 150+ trained callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nReference clients include IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nHappy to share more details if useful for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:8,name:"Template 8",body:"Hello {{GREETING}}\n\nI see you're involved in collections at {{COMPANY}}.\n\nGetlux runs pan-India tele-calling collections for NBFCs and financial-service companies, with 150+ trained tele-callers and offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe support names like IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nOpen to sharing our company profile if relevant for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:9,name:"Template 9",body:"Hi {{GREETING}}\n\nYour collections background at {{COMPANY}} caught my eye.\n\nGetlux is a tele-calling collections partner to NBFCs and lenders across India — 150+ trained callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe currently work with IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould a short profile overview be useful for {{COMPANY}}?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
-{id:10,name:"Template 10",body:"Hi {{GREETING}}\n\nSaw your role handling recovery/collections at {{COMPANY}}.\n\nGetlux offers pan-India tele-calling collection support for NBFCs and lending businesses — 150+ trained callers, offices across Bangalore, Tamil Nadu, and Kerala.\n\nOur client base includes IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nLet me know if it's worth a quick conversation for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+/* ---------------- STORAGE HELPERS ----------------
+   This demo.html is a standalone, self-contained page deployed on GitHub
+   Pages (not a Claude.ai artifact) — localStorage is used deliberately
+   here so LinkedIn Data numbers and template edits persist between visits
+   in the visitor's own browser. Nothing is ever sent to a server. */
+const LS_LINKEDIN_DATA = "getlux_demo_linkedin_data_v1";
+const LS_TEMPLATES = "getlux_demo_templates_v1";
+const LS_CONTACTS = "getlux_demo_contacts_v1";
+
+function lsGet(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function lsSet(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){ /* storage unavailable — demo still works in-memory */ }
+}
+
+/* ---------------- TEMPLATES ---------------- */
+const INVITATION_NOTE_CHAR_LIMIT = 300;
+
+const DEFAULT_CONNECTION_TEMPLATES = [
+{id:"template-1",type:"Connection Message",name:"Template 1",body:"{{GREETING}}\n\nI noticed your role in collections at {{COMPANY}}.\n\nGetlux supports NBFCs and lending businesses with professional collection support, including tele-calling and field-collection requirements. We currently support organizations such as IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nOur pan-India tele-calling team includes 150+ trained callers, supported by offices across Bangalore, Tamil Nadu, and Kerala.\n\nIf collection support may be useful for {{COMPANY}}, please let us know. We would be happy to share our company profile.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-2",type:"Connection Message",name:"Template 2",body:"{{GREETING}}\n\nSaw that you are currently handling collections or recovery at {{COMPANY}}.\n\nGetlux provides collection-agency support for NBFCs, lenders, and financial-service companies. Our team manages pan-India tele-calling collections through 150+ trained tele-callers, with operational presence in Bangalore, Tamil Nadu, and Kerala.\n\nWe support companies including IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould it be okay to share the Getlux company profile for your reference?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-3",type:"Connection Message",name:"Template 3",body:"{{GREETING}}\n\nI came across your collections role at {{COMPANY}}.\n\nGetlux helps lending and NBFC businesses strengthen their collection operations through pan-India tele-calling support. We have 150+ trained collection callers and offices across Bangalore, Tamil Nadu, and Kerala.\n\nOur experience includes supporting organizations such as IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nIf you are exploring collection-agency support for {{COMPANY}}, I can share our profile and service details.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-4",type:"Connection Message",name:"Template 4",body:"{{GREETING}}\n\nYour experience in collections at {{COMPANY}} caught my attention.\n\nGetlux is a collection-support partner for NBFCs and lenders, running pan-India tele-calling operations with 150+ trained callers from offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe've worked with organizations like IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nHappy to send over our profile if it's relevant for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-5",type:"Connection Message",name:"Template 5",body:"{{GREETING}}\n\nNoticed you lead collections-related work at {{COMPANY}}.\n\nAt Getlux, we support NBFCs, banks, and fintechs with pan-India tele-calling collections — 150+ trained tele-callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nOrganizations we support include IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nLet me know if a quick profile share would be useful for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-6",type:"Connection Message",name:"Template 6",body:"{{GREETING}}\n\nCame across your collections/recovery profile at {{COMPANY}}.\n\nGetlux provides pan-India tele-calling collection support for NBFCs and lenders, with 150+ trained callers across offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe currently support IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould you be open to a short profile share for {{COMPANY}}?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-7",type:"Connection Message",name:"Template 7",body:"{{GREETING}}\n\nYour work in collections at {{COMPANY}} stood out.\n\nGetlux supports lending and NBFC businesses with tele-calling and field-collection capacity — 150+ trained callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nReference clients include IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nHappy to share more details if useful for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-8",type:"Connection Message",name:"Template 8",body:"{{GREETING}}\n\nI see you're involved in collections at {{COMPANY}}.\n\nGetlux runs pan-India tele-calling collections for NBFCs and financial-service companies, with 150+ trained tele-callers and offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe support names like IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nOpen to sharing our company profile if relevant for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-9",type:"Connection Message",name:"Template 9",body:"{{GREETING}}\n\nYour collections background at {{COMPANY}} caught my eye.\n\nGetlux is a tele-calling collections partner to NBFCs and lenders across India — 150+ trained callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe currently work with IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould a short profile overview be useful for {{COMPANY}}?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:"template-10",type:"Connection Message",name:"Template 10",body:"{{GREETING}}\n\nSaw your role handling recovery/collections at {{COMPANY}}.\n\nGetlux offers pan-India tele-calling collection support for NBFCs and lending businesses — 150+ trained callers, offices across Bangalore, Tamil Nadu, and Kerala.\n\nOur client base includes IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nLet me know if it's worth a quick conversation for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
 ];
 
-const QUAL_KEYWORDS = ["collection","collections","recovery","debt recovery","loan recovery","legal recovery","field collections","tele-calling collections","receivables","accounts receivable","delinquency","credit","credit operations","lending","nbfc","bank","banking","financial services","finance operations","loan servicing","repayment","risk collections","payment recovery","asset recovery"];
+const DEFAULT_INVITATION_TEMPLATES = [
+{id:"invite-1",type:"Invitation Note",name:"Invitation 1 — collections/recovery support",body:"{{GREETING}} I support NBFCs and lenders with collections and recovery services at Getlux. Would love to connect and share how we might help {{COMPANY}}."},
+{id:"invite-2",type:"Invitation Note",name:"Invitation 2 — tele-calling collections partner",body:"{{GREETING}} Noticed your work in collections/recovery. I'm with Getlux, a pan-India tele-calling collections partner for NBFCs and lenders. Open to connecting?"},
+{id:"invite-3",type:"Invitation Note",name:"Invitation 3 — short introduction",body:"{{GREETING}} I'm Sabari from Getlux — we help NBFCs and lenders with pan-India collections support. Would be great to connect with you."},
+];
+
+let templates = lsGet(LS_TEMPLATES, null) || [...DEFAULT_CONNECTION_TEMPLATES, ...DEFAULT_INVITATION_TEMPLATES];
+function saveTemplates(){ lsSet(LS_TEMPLATES, templates); }
+function templatesOfType(type){ return templates.filter(t => t.type === type); }
+
+function escapeHtml(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+const QUAL_KEYWORDS =["collection","collections","recovery","debt recovery","loan recovery","legal recovery","field collections","tele-calling collections","receivables","accounts receivable","delinquency","credit","credit operations","lending","nbfc","bank","banking","financial services","finance operations","loan servicing","repayment","risk collections","payment recovery","asset recovery"];
 
 function isQualified(role, company){
   const hay = (role+" "+company).toLowerCase();
@@ -116,6 +152,22 @@ function isQualified(role, company){
   return hit ? {qualified:true, reason:"Matched keyword: \""+hit+"\""} : {qualified:false, reason:"No qualifying keyword found"};
 }
 
+function greeting(pronouns){
+  // Explicit-pronoun-only rule: "Hi Sir," ONLY if pronoun field is
+  // explicitly He/Him, "Hi Ma'am," ONLY if explicitly She/Her, otherwise
+  // generic "Hello," — never inferred from a person's name.
+  if(pronouns==="He/Him") return "Hi Sir,";
+  if(pronouns==="She/Her") return "Hi Ma'am,";
+  return "Hello,";
+}
+function renderTemplate(tpl, greetingText, company){
+  return tpl.body.split("{{GREETING}}").join(greetingText).split("{{COMPANY}}").join(company);
+}
+function templateTypeFor(contact){
+  return contact.connectionStatus === "Connected" ? "Connection Message" : "Invitation Note";
+}
+
+/* ---------------- CONTACTS (seed data) ---------------- */
 const rawContacts = [
  ["Contact A","Collections Manager","Bright Finserv NBFC","He/Him"],
  ["Contact B","Regional Collection Head","Suvidha Capital","She/Her"],
@@ -134,26 +186,58 @@ const rawContacts = [
  ["Contact O","Accounts Receivable Lead","Trustline NBFC",null],
 ];
 
-let contacts = rawContacts.map((r,i)=>{
-  const q = isQualified(r[1], r[2]);
-  return {
-    id:i+1, name:r[0], role:r[1], company:r[2], pronouns:r[3],
-    qualified:q.qualified, reason:q.reason,
-    stage: q.qualified ? "Qualified" : "Skipped",
-    template: null, sentMessage:null, sentAt:null,
-    reply:null, existingConv:false,
-  };
+function buildDefaultContacts(){
+  return rawContacts.map((r,i)=>{
+    const q = isQualified(r[1], r[2]);
+    return {
+      id:i+1, name:r[0], role:r[1], company:r[2], pronouns:r[3],
+      qualified:q.qualified, reason:q.reason,
+      stage: q.qualified ? "Qualified" : "Skipped",
+      connectionStatus: "Not Connected",
+      templateId: null, message:null, messageStatus:"pending", // pending | copied | sent
+      sentAt:null, reply:null, existingConv:false,
+    };
+  });
+}
+
+let contacts = lsGet(LS_CONTACTS, null) || buildDefaultContacts();
+function saveContacts(){ lsSet(LS_CONTACTS, contacts); }
+let nextContactId = Math.max(0, ...contacts.map(c=>c.id)) + 1;
+
+/* ---------------- LINKEDIN DATA (manual entry, localStorage) ---------------- */
+const STALE_DAYS = 7;
+let linkedinData = lsGet(LS_LINKEDIN_DATA, {
+  totalConnections: 0, pendingSent: 0, pendingReceived: 0, lastUpdated: null,
 });
+function saveLinkedInData(totalConnections, pendingSent, pendingReceived){
+  linkedinData = {
+    totalConnections: Number(totalConnections)||0,
+    pendingSent: Number(pendingSent)||0,
+    pendingReceived: Number(pendingReceived)||0,
+    lastUpdated: new Date().toISOString(),
+  };
+  lsSet(LS_LINKEDIN_DATA, linkedinData);
+  render();
+}
+function daysSince(iso){
+  if(!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+function isLinkedInDataStale(){
+  const d = daysSince(linkedinData.lastUpdated);
+  return d === null || d > STALE_DAYS;
+}
 
 /* ---------------- STATE ---------------- */
 let theme = "light";
 let currentPage = "dashboard";
-let batchState = null; // running batch simulation
 let complianceAccepted = false;
+let templatesTab = "Connection Message";
+let importState = { headers: null, rows: null, detected: false, connectionStatus: "Not Connected", summary: null, error: null };
 
-const pages = ["dashboard","import","contacts","queue","batch","pipeline","campaigns","templates","settings"];
+const pages = ["dashboard","linkedin","import","contacts","queue","batch","pipeline","campaigns","templates","settings"];
 const pageLabels = {
-  dashboard:"📊 Dashboard", import:"📥 Import CSV", contacts:"👥 Contacts",
+  dashboard:"📊 Dashboard", linkedin:"🔗 LinkedIn Data", import:"📥 Import CSV", contacts:"👥 Contacts",
   queue:"✅ Qualified Queue", batch:"✉️ Batch Review & Send", pipeline:"🗂 Pipeline (Kanban)",
   campaigns:"🎯 Campaigns", templates:"📝 Templates", settings:"⚙️ Settings"
 };
@@ -174,19 +258,24 @@ function go(p){ currentPage=p; render(); }
 function stageBadge(stage){
   const map = {
     "Qualified":"blue","Verified":"blue","Queued":"blue","Draft Ready":"blue","Approved":"blue",
+    "Draft Copied — Awaiting Manual Send":"amber",
     "Outreach Sent":"green","Delivered / Sent Successfully":"green","Replied":"green","Interested":"green","Won":"green",
     "Follow-up Required":"amber","Skipped":"amber","Not Interested":"red","Failed":"red","Do Not Contact":"red","Lost":"red","Existing Conversation":"amber"
   };
   return `<span class="badge ${map[stage]||'blue'}">${stage}</span>`;
 }
+function connectionBadge(status){
+  return `<span class="badge ${status==="Connected"?"green":"amber"}">${status}</span>`;
+}
 
 /* ---------------- PAGES ---------------- */
 function renderDashboard(){
-  const sentCount = contacts.filter(c=>c.sentMessage).length;
+  const sentCount = contacts.filter(c=>c.messageStatus==="sent").length;
   const repliedCount = contacts.filter(c=>c.reply).length;
   const qualifiedCount = contacts.filter(c=>c.qualified).length;
   const skippedCount = contacts.filter(c=>c.stage==="Skipped").length;
   const replyRate = sentCount ? ((repliedCount/sentCount)*100).toFixed(1) : "0.0";
+  const stale = isLinkedInDataStale();
   return `
   <div class="topbar"><div><h1>Dashboard</h1><div class="sub">Live metrics computed from current demo data</div></div></div>
   <div class="cards">
@@ -200,12 +289,22 @@ function renderDashboard(){
     <div class="card"><div class="k">Won Opportunities</div><div class="v">0</div></div>
   </div>
   <div class="panel">
+    <h3>LinkedIn Data ${stale ? '<span class="badge amber">Update your LinkedIn numbers</span>' : ''}</h3>
+    <div class="small" style="margin-bottom:10px;">Manually entered on the LinkedIn Data screen — never scraped or pulled automatically.</div>
+    <div class="cards" style="margin-bottom:0;">
+      <div class="card"><div class="k">Total Connections</div><div class="v">${linkedinData.totalConnections}</div></div>
+      <div class="card"><div class="k">Pending Sent Requests</div><div class="v">${linkedinData.pendingSent}</div></div>
+      <div class="card"><div class="k">Pending Received Requests</div><div class="v">${linkedinData.pendingReceived}</div></div>
+      <div class="card"><div class="k">Last Updated</div><div class="v" style="font-size:15px;">${linkedinData.lastUpdated ? new Date(linkedinData.lastUpdated).toLocaleDateString() : 'Never'}</div></div>
+    </div>
+  </div>
+  <div class="panel">
     <h3>Pipeline stage distribution</h3>
     ${barChart()}
   </div>
   <div class="panel">
     <h3>How this demo works</h3>
-    <div class="small">This is a fully interactive, in-browser preview of the Getlux Outreach CRM using the real sample contacts, qualification keywords, and message templates from the project. All "sending" here is simulated locally — nothing is sent anywhere. Walk through <b>Import → Contacts → Qualified Queue → Batch Review & Send → Pipeline</b> using the sidebar to see the actual workflow. The real Windows app (Electron + SQLite) is being built automatically once you push the source code to GitHub.</div>
+    <div class="small">This is a fully interactive, in-browser preview of the Getlux Outreach CRM using the real sample contacts, qualification keywords, and message templates from the project. Every "send" here is a manual copy-to-clipboard action that you confirm yourself — nothing is ever sent anywhere automatically. Walk through <b>LinkedIn Data → Import → Contacts → Qualified Queue → Batch Review & Send → Pipeline</b> using the sidebar to see the actual workflow. The real Windows app (Electron + SQLite) mirrors this exact logic.</div>
   </div>`;
 }
 
@@ -223,163 +322,388 @@ function barChart(){
     </div>`).join("");
 }
 
-function renderImport(){
+function renderLinkedInPage(){
+  const stale = isLinkedInDataStale();
+  const days = daysSince(linkedinData.lastUpdated);
   return `
-  <div class="topbar"><div><h1>Import LinkedIn Connections</h1><div class="sub">sample-data/Connections.csv (bundled with the project)</div></div>
-    <button class="btn primary" onclick="doImport()">Import Sample CSV</button>
-  </div>
+  <div class="topbar"><div><h1>LinkedIn Data</h1><div class="sub">Manual entry only — saved to your browser's local storage</div></div></div>
   <div class="panel">
-    <h3>Preview (first ${Math.min(contacts.length,20)} rows)</h3>
-    <table><thead><tr><th>Name</th><th>Position</th><th>Company</th><th>Pronouns (if shown)</th></tr></thead>
-    <tbody>${rawContacts.slice(0,20).map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]||'<span class="small">not shown</span>'}</td></tr>`).join("")}</tbody></table>
-  </div>
-  <div class="panel">
-    <h3>Import summary</h3>
-    <div class="small">Imported: ${contacts.length} • Duplicates: 0 • Invalid URLs: 0 • Skipped rows: 0</div>
+    <div class="small" style="margin-bottom:14px;">
+      Type in what you see in your own LinkedIn account (My Network → Connections, and the "Sent"/"Received" invitation
+      tabs). This demo never logs into LinkedIn or pulls these numbers automatically — "Last updated" is set
+      automatically when you click Save.
+    </div>
+    <div class="row" style="align-items:flex-end;">
+      <div>
+        <label class="field-label">Total Connections</label>
+        <input type="number" min="0" id="li-total" value="${linkedinData.totalConnections}" />
+      </div>
+      <div>
+        <label class="field-label">Pending Sent Requests</label>
+        <input type="number" min="0" id="li-sent" value="${linkedinData.pendingSent}" />
+      </div>
+      <div>
+        <label class="field-label">Pending Received Requests</label>
+        <input type="number" min="0" id="li-received" value="${linkedinData.pendingReceived}" />
+      </div>
+      <button class="btn primary" onclick="submitLinkedInData()">Save LinkedIn Data</button>
+    </div>
+    <div class="small" style="margin-top:14px;">
+      <strong>Last updated:</strong> ${linkedinData.lastUpdated ? new Date(linkedinData.lastUpdated).toLocaleString() + ' (' + days + ' day(s) ago)' : 'Never'}
+      ${stale ? '<span class="badge amber" style="margin-left:8px;">Update your LinkedIn numbers</span>' : ''}
+    </div>
   </div>`;
 }
-function doImport(){ go('contacts'); }
+function submitLinkedInData(){
+  const total = document.getElementById("li-total").value;
+  const sent = document.getElementById("li-sent").value;
+  const received = document.getElementById("li-received").value;
+  saveLinkedInData(total, sent, received);
+}
+
+/* ---------------- IMPORT ---------------- */
+const LINKEDIN_EXPORT_HEADERS = ["first name","last name","url","company","position","connected on"];
+function detectLinkedInExportFormat(headers){
+  const lower = headers.map(h=>h.trim().toLowerCase());
+  return LINKEDIN_EXPORT_HEADERS.every(h=>lower.includes(h));
+}
+// Minimal CSV parser (handles quoted fields with embedded commas/quotes) —
+// good enough for the small sample files this demo works with.
+function parseCsv(text){
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; } else { inQuotes = false; }
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field = ""; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && text[i+1] === '\n') i++;
+        row.push(field); field = "";
+        if(row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else field += c;
+    }
+  }
+  if(field !== "" || row.length){ row.push(field); rows.push(row); }
+  if(rows.length === 0) return { headers: [], data: [] };
+  const headers = rows[0].map(h=>h.trim());
+  const data = rows.slice(1).map(r=>{
+    const obj = {};
+    headers.forEach((h,i)=>{ obj[h] = (r[i]||"").trim(); });
+    return obj;
+  });
+  return { headers, data };
+}
+
+function handleFileChosen(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const { headers, data } = parseCsv(String(e.target.result));
+      const isLinkedInExport = detectLinkedInExportFormat(headers);
+      importState = {
+        filename: file.name, headers, rows: data,
+        detected: isLinkedInExport,
+        connectionStatus: isLinkedInExport ? "Connected" : "Not Connected",
+        summary: null, error: null,
+      };
+      render();
+    }catch(err){
+      importState.error = "Could not parse this CSV file.";
+      render();
+    }
+  };
+  reader.readAsText(file);
+}
+
+function findHeader(headers, needle){
+  return headers.find(h=>h.trim().toLowerCase()===needle) || headers.find(h=>h.trim().toLowerCase().includes(needle));
+}
+
+function runImport(){
+  if(!importState.rows) return;
+  const headers = importState.headers;
+  const urlCol = findHeader(headers, "url") || findHeader(headers, "linkedin");
+  const firstCol = findHeader(headers, "first name");
+  const lastCol = findHeader(headers, "last name");
+  const fullCol = findHeader(headers, "full name") || findHeader(headers, "name");
+  const companyCol = findHeader(headers, "company");
+  const positionCol = findHeader(headers, "position") || findHeader(headers, "title");
+  const connectedOnCol = findHeader(headers, "connected on");
+
+  let imported=0, duplicates=0, invalid=0;
+  const seenUrls = new Set(contacts.map(c=>c.linkedinUrl || ""));
+
+  importState.rows.forEach(row=>{
+    const url = urlCol ? row[urlCol] : "";
+    let name = fullCol ? row[fullCol] : "";
+    if(!name){
+      name = `${firstCol ? row[firstCol] : ""} ${lastCol ? row[lastCol] : ""}`.trim();
+    }
+    const company = companyCol ? row[companyCol] : "";
+    const position = positionCol ? row[positionCol] : "";
+    if(!name || !url){ invalid++; return; }
+    const normalized = url.trim().toLowerCase().replace(/\/+$/,"");
+    if(seenUrls.has(normalized)){ duplicates++; return; }
+    seenUrls.add(normalized);
+    const q = isQualified(position, company);
+    contacts.push({
+      id: nextContactId++, name, role: position, company, pronouns: null,
+      linkedinUrl: normalized,
+      qualified: q.qualified, reason: q.reason,
+      stage: q.qualified ? "Qualified" : "Imported",
+      connectionStatus: importState.connectionStatus,
+      templateId: null, message: null, messageStatus: "pending",
+      sentAt: null, reply: null, existingConv: false,
+      connectedOn: connectedOnCol ? row[connectedOnCol] : null,
+    });
+    imported++;
+  });
+
+  importState.summary = { imported, duplicates, invalid, total: importState.rows.length };
+  saveContacts();
+  render();
+}
+
+function renderImport(){
+  return `
+  <div class="topbar"><div><h1>Import CSV</h1><div class="sub">Import LinkedIn's own Connections export, or a generic prospect list</div></div></div>
+  <div class="panel">
+    <div class="small" style="margin-bottom:12px;">
+      Import either LinkedIn's official <b>Connections</b> data export (Settings &amp; Privacy → Data Privacy →
+      Get a copy of your data) or a generic prospect list of people you're not yet connected to. Nothing here talks
+      to linkedin.com, logs into LinkedIn, or scrapes anything — this only reads a local file you choose and already
+      downloaded yourself. You can also try the bundled <code>sample-data/Connections.csv</code> from the repo.
+    </div>
+    <input type="file" accept=".csv" onchange="handleFileChosen(this)" />
+    ${importState.error ? `<p style="color:var(--red);">${importState.error}</p>` : ''}
+  </div>
+  ${importState.headers ? `
+  <div class="panel">
+    <h3>Detected format</h3>
+    ${importState.detected
+      ? '<span class="badge green">Detected LinkedIn Connections export format — these contacts will be marked "Connected"</span>'
+      : '<span class="badge blue">Detected a generic prospect list — these contacts will be marked "Not Connected"</span>'}
+    <div class="row" style="margin-top:12px;">
+      <label class="field-label" style="margin:0;">Connection status override</label>
+      <select onchange="importState.connectionStatus=this.value;render();">
+        <option value="Not Connected" ${importState.connectionStatus==="Not Connected"?"selected":""}>Not Connected (Invitation Note templates)</option>
+        <option value="Connected" ${importState.connectionStatus==="Connected"?"selected":""}>Connected (Connection Message templates)</option>
+      </select>
+    </div>
+    <h3 style="margin-top:16px;">Preview (first ${Math.min(importState.rows.length,20)} rows)</h3>
+    <div style="overflow-x:auto;">
+    <table><thead><tr>${importState.headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${importState.rows.slice(0,20).map(r=>`<tr>${importState.headers.map(h=>`<td>${escapeHtml(r[h]||'')}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    </div>
+    <button class="btn primary" style="margin-top:12px;" onclick="runImport()">Import ${importState.rows.length} row(s)</button>
+  </div>` : ''}
+  ${importState.summary ? `
+  <div class="panel">
+    <h3>Import summary</h3>
+    <div class="cards" style="margin-bottom:0;">
+      <div class="card"><div class="k">Imported</div><div class="v">${importState.summary.imported}</div></div>
+      <div class="card"><div class="k">Duplicates</div><div class="v">${importState.summary.duplicates}</div></div>
+      <div class="card"><div class="k">Invalid</div><div class="v">${importState.summary.invalid}</div></div>
+      <div class="card"><div class="k">Total Rows</div><div class="v">${importState.summary.total}</div></div>
+    </div>
+  </div>` : ''}`;
+}
 
 function renderContacts(){
   return `
   <div class="topbar"><div><h1>Contacts</h1><div class="sub">${contacts.length} total</div></div></div>
   <div class="panel">
-    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Qualification</th><th>Stage</th></tr></thead>
+    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Connection status</th><th>Qualification</th><th>Stage</th></tr></thead>
     <tbody>${contacts.map(c=>`<tr>
-      <td>${c.name}</td><td>${c.role}</td><td>${c.company}</td>
-      <td class="small">${c.reason}</td>
+      <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.role)}</td><td>${escapeHtml(c.company)}</td>
+      <td>${connectionBadge(c.connectionStatus)}</td>
+      <td class="small">${escapeHtml(c.reason)}</td>
       <td>${stageBadge(c.stage)}</td>
     </tr>`).join("")}</tbody></table>
   </div>`;
 }
 
 function renderQueue(){
-  const q = contacts.filter(c=>c.qualified && !c.sentMessage);
+  const q = contacts.filter(c=>c.qualified && c.messageStatus!=="sent");
   return `
-  <div class="topbar"><div><h1>Qualified Contacts Queue</h1><div class="sub">${q.length} qualified, unsent contacts ready for verification & outreach</div></div>
+  <div class="topbar"><div><h1>Qualified Contacts Queue</h1><div class="sub">${q.length} qualified contacts ready for drafting</div></div>
     <button class="btn primary" onclick="go('batch')">Open Batch Review →</button>
   </div>
   <div class="panel">
-    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Pronouns</th><th>Greeting</th><th>Qualification reason</th></tr></thead>
+    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Connection status</th><th>Draft template on send</th><th>Pronouns</th><th>Greeting</th><th>Qualification reason</th></tr></thead>
     <tbody>${q.map(c=>`<tr>
-      <td>${c.name}</td><td>${c.role}</td><td>${c.company}</td><td>${c.pronouns||'—'}</td>
-      <td>${greeting(c.pronouns)}</td><td class="small">${c.reason}</td>
+      <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.role)}</td><td>${escapeHtml(c.company)}</td>
+      <td>${connectionBadge(c.connectionStatus)}</td>
+      <td>${templateTypeFor(c)}</td>
+      <td>${c.pronouns||'—'}</td>
+      <td>${greeting(c.pronouns)}</td><td class="small">${escapeHtml(c.reason)}</td>
     </tr>`).join("")}</tbody></table>
   </div>`;
 }
 
-function greeting(pronouns){
-  if(pronouns==="He/Him") return "Hi Sir,";
-  if(pronouns==="She/Her") return "Hi Ma'am,";
-  return "Hello,";
-}
-function renderMessage(c, tplId){
-  const tpl = templates.find(t=>t.id===tplId) || templates[0];
-  return tpl.body.replace("{{GREETING}}", greeting(c.pronouns).replace(/,$/,"")).replace(/\{\{COMPANY\}\}/g, c.company);
+/* ---------------- BATCH REVIEW & SEND (copy-to-clipboard, manual mark-sent) ---------------- */
+function draftMessageFor(c){
+  const type = templateTypeFor(c);
+  const candidates = templatesOfType(type);
+  const tpl = candidates.find(t=>t.id===c.templateId) || candidates[0] || templates[0];
+  const g = greeting(c.pronouns);
+  return { template: tpl, text: renderTemplate(tpl, g, c.company) };
 }
 
-let selectedBatchTemplate = 1;
 function renderBatch(){
-  const q = contacts.filter(c=>c.qualified && !c.sentMessage).slice(0,10);
-  if(!batchState){
-    return `
-    <div class="topbar"><div><h1>Batch Review & Send</h1><div class="sub">Mock mode — no real LinkedIn messages are ever sent</div></div></div>
-    <div class="compliance-banner">🔒 Mock send only. Every message below requires your review before anything is marked "sent."</div>
-    <div class="panel">
-      <h3>Template variation</h3>
-      <div class="pill-tabs">${templates.map(t=>`<div class="pill ${t.id===selectedBatchTemplate?'active':''}" onclick="setTpl(${t.id})">${t.name}</div>`).join("")}</div>
-      <h3>Draft preview (${q.length} contacts in this batch)</h3>
-      ${q.map(c=>`
-        <div class="panel" style="margin-bottom:10px;">
-          <div class="row"><b>${c.name}</b><span class="small">${c.role} @ ${c.company}</span></div>
-          <div class="draft-box">${renderMessage(c, selectedBatchTemplate)}</div>
-        </div>`).join("")}
-      <button class="btn primary" ${q.length===0?'disabled':''} onclick="confirmSend(${q.length})">Confirm and Send Batch (${q.length})</button>
-    </div>`;
-  }
-  const pct = Math.round((batchState.done/batchState.total)*100);
+  const q = contacts.filter(c=>c.qualified).slice(0,10);
+  const copiedCount = q.filter(c=>c.messageStatus!=="pending").length;
+  const sentCount = q.filter(c=>c.messageStatus==="sent").length;
   return `
-    <div class="topbar"><div><h1>Batch Review & Send</h1><div class="sub">Sending in progress…</div></div>
-      <button class="btn danger" onclick="stopBatch()">■ Stop Batch</button>
-    </div>
+    <div class="topbar"><div><h1>Batch Review & Send</h1><div class="sub">Copy each draft and paste it into LinkedIn yourself — nothing sends automatically</div></div></div>
+    <div class="compliance-banner">🔒 For each contact, the correct draft type is auto-selected — an <b>Invitation Note</b> if not yet connected, or a <b>Connection Message</b> if already connected. Click <b>Copy to Clipboard</b>, paste and send it yourself inside your own LinkedIn tab, then click <b>Mark as Sent</b> — that is the ONLY way a contact is ever recorded as sent.</div>
     <div class="panel">
-      <div class="row"><b>${batchState.currentName||'—'}</b><span class="small">${batchState.currentCompany||''}</span></div>
-      <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
-      <div class="cards">
-        <div class="card"><div class="k">Sent</div><div class="v">${batchState.sent}</div></div>
-        <div class="card"><div class="k">Replied</div><div class="v">${batchState.replied}</div></div>
-        <div class="card"><div class="k">Skipped</div><div class="v">${batchState.skipped}</div></div>
-        <div class="card"><div class="k">Failed</div><div class="v">${batchState.failed}</div></div>
-        <div class="card"><div class="k">Remaining</div><div class="v">${batchState.total-batchState.done}</div></div>
-      </div>
-      <div class="small">${batchState.log.slice(-6).map(l=>`<div>${l}</div>`).join("")}</div>
+      <h3>Drafts (${q.length} total — ${copiedCount} copied, ${sentCount} marked sent)</h3>
+      ${q.map(c=>{
+        const { template, text } = draftMessageFor(c);
+        if(c.templateId === null) c.templateId = template ? template.id : null;
+        const msg = c.message || text;
+        const options = templatesOfType(templateTypeFor(c));
+        return `
+        <div class="panel" style="margin-bottom:10px;">
+          <div class="row">
+            <b>${escapeHtml(c.name)}</b>
+            <span class="small">${escapeHtml(c.role)} @ ${escapeHtml(c.company)}</span>
+            ${connectionBadge(c.connectionStatus)}
+            <span class="badge blue">${templateTypeFor(c)}</span>
+            <select onchange="changeBatchTemplate(${c.id}, this.value)">
+              ${options.map(t=>`<option value="${t.id}" ${t.id===c.templateId?'selected':''}>${t.name}</option>`).join("")}
+            </select>
+            ${c.messageStatus==="copied" ? '<span class="badge amber">Draft Copied — Awaiting Manual Send</span>' : ''}
+            ${c.messageStatus==="sent" ? '<span class="badge green">Marked as Sent</span>' : ''}
+          </div>
+          <div class="draft-box" contenteditable="true" oninput="editDraft(${c.id}, this.innerText)">${escapeHtml(msg)}</div>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn primary" onclick="copyDraftToClipboard(${c.id})">Copy to Clipboard</button>
+            <button class="btn" ${c.messageStatus==="sent"?"disabled":""} onclick="markDraftSent(${c.id})" title="Click only after you've actually sent this on LinkedIn yourself">
+              ${c.messageStatus==="sent" ? "Sent ✓" : "Mark as Sent"}
+            </button>
+          </div>
+        </div>`;
+      }).join("")}
     </div>`;
 }
-function setTpl(id){ selectedBatchTemplate=id; render(); }
-
-function confirmSend(n){
-  if(!confirm(`Confirm and send this batch of ${n} messages? This is a simulated send — nothing leaves this browser.`)) return;
-  const q = contacts.filter(c=>c.qualified && !c.sentMessage).slice(0,10);
-  batchState = {total:q.length, done:0, sent:0, replied:0, skipped:0, failed:0, queue:q.slice(), log:[], stopped:false};
-  render();
-  runBatchStep();
-}
-function stopBatch(){
-  if(batchState){ batchState.stopped=true; batchState.log.push("User stopped the batch."); }
+function changeBatchTemplate(id, templateId){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  c.templateId = templateId;
+  c.message = null;
   render();
 }
-function runBatchStep(){
-  if(!batchState || batchState.stopped || batchState.queue.length===0){
-    if(batchState) batchState.log.push("Batch complete.");
-    setTimeout(()=>{ if(!batchState || batchState.queue.length===0) { render(); } }, 300);
-    return;
-  }
-  const c = batchState.queue.shift();
-  batchState.currentName = c.name; batchState.currentCompany = c.company;
-  render();
-  setTimeout(()=>{
-    if(!batchState || batchState.stopped) return;
-    c.sentMessage = renderMessage(c, selectedBatchTemplate);
-    c.sentAt = new Date().toISOString();
-    c.stage = "Outreach Sent";
-    const willReply = Math.random() < 0.35;
-    if(willReply){
-      c.reply = "Interested — please share your company profile.";
-      c.stage = "Replied";
-      batchState.replied++;
+function editDraft(id, text){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  c.message = text;
+  // Don't re-render on every keystroke (would steal focus) — just store it.
+}
+async function copyDraftToClipboard(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  const { text } = draftMessageFor(c);
+  const finalText = c.message || text;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(finalText);
     }
-    batchState.sent++;
-    batchState.done++;
-    batchState.log.push(`Sent to ${c.name} (${c.company})`);
-    render();
-    setTimeout(runBatchStep, 500 + Math.random()*400);
-  }, 500 + Math.random()*500);
+  }catch(e){ /* clipboard permissions vary by browser — draft is still shown for manual copy */ }
+  c.message = finalText;
+  c.messageStatus = "copied";
+  c.stage = "Draft Copied — Awaiting Manual Send";
+  saveContacts();
+  render();
+}
+function markDraftSent(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  const { text } = draftMessageFor(c);
+  c.message = c.message || text;
+  c.messageStatus = "sent";
+  c.stage = "Outreach Sent";
+  c.sentAt = new Date().toISOString();
+  // Small illustrative touch so the Pipeline/Dashboard screens have
+  // something to show — a random subset of "sent" demo contacts get a
+  // simulated reply. This is cosmetic demo flavor only, not a real send.
+  if(Math.random() < 0.35){
+    c.reply = "Interested — please share your company profile.";
+    c.stage = "Replied";
+  }
+  saveContacts();
+  render();
 }
 
 function renderPipeline(){
-  const stages = ["Qualified","Outreach Sent","Replied","Interested","Follow-up Required","Won","Skipped"];
+  const stages = ["Qualified","Draft Copied — Awaiting Manual Send","Outreach Sent","Replied","Interested","Follow-up Required","Won","Skipped"];
   return `
   <div class="topbar"><div><h1>Pipeline — Kanban</h1><div class="sub">Live view of every contact's current CRM stage</div></div></div>
   <div class="kanban">
     ${stages.map(s=>`
       <div class="kcol"><h4>${s} (${contacts.filter(c=>c.stage===s).length})</h4>
-        ${contacts.filter(c=>c.stage===s).map(c=>`<div class="kcard"><b>${c.name}</b>${c.company}</div>`).join("") || '<div class="small">—</div>'}
+        ${contacts.filter(c=>c.stage===s).map(c=>`<div class="kcard"><b>${escapeHtml(c.name)}</b>${escapeHtml(c.company)}</div>`).join("") || '<div class="small">—</div>'}
       </div>`).join("")}
   </div>`;
 }
 
 function renderCampaigns(){
   const names = ["August Collections Outreach","NBFC Decision Makers","Banking Collections Leads","Recovery Managers Campaign","Kerala Field Collections Leads","Tamil Nadu Collections Leads","Karnataka Collections Leads"];
+  const sent = contacts.filter(c=>c.messageStatus==="sent").length;
+  const replied = contacts.filter(c=>c.reply).length;
   return `
   <div class="topbar"><div><h1>Campaigns</h1></div></div>
   <div class="panel"><table><thead><tr><th>Campaign</th><th>Sent</th><th>Replies</th><th>Reply rate</th></tr></thead>
-  <tbody>${names.map((n,i)=>`<tr><td>${n}</td><td>${i===0?contacts.filter(c=>c.sentMessage).length:0}</td><td>${i===0?contacts.filter(c=>c.reply).length:0}</td><td>${i===0 && contacts.filter(c=>c.sentMessage).length ? ((contacts.filter(c=>c.reply).length/contacts.filter(c=>c.sentMessage).length)*100).toFixed(0)+'%':'—'}</td></tr>`).join("")}</tbody></table></div>`;
+  <tbody>${names.map((n,i)=>`<tr><td>${n}</td><td>${i===0?sent:0}</td><td>${i===0?replied:0}</td><td>${i===0 && sent ? ((replied/sent)*100).toFixed(0)+'%':'—'}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
+/* ---------------- TEMPLATES (editable, type tabs) ---------------- */
 function renderTemplates(){
+  const list = templatesOfType(templatesTab);
   return `
-  <div class="topbar"><div><h1>Templates</h1><div class="sub">${templates.length} approved message variations</div></div></div>
-  ${templates.map(t=>`<div class="panel"><h3>${t.name}</h3><div class="draft-box">${t.body.replace("{{GREETING}}","Hello,").replace(/\{\{COMPANY\}\}/g,"[Company]")}</div></div>`).join("")}`;
+  <div class="topbar"><div><h1>Templates</h1><div class="sub">${templates.length} templates — edits are saved to your browser</div></div></div>
+  <div class="small" style="margin-bottom:12px;">
+    Two template types: <b>Invitation Note</b> (for prospects not yet connected — LinkedIn caps invite notes at
+    roughly ${INVITATION_NOTE_CHAR_LIMIT} characters, so keep these short) and <b>Connection Message</b> (for
+    prospects you're already connected to). Both use {{GREETING}} and {{COMPANY}} placeholders.
+  </div>
+  <div class="pill-tabs">
+    <div class="pill ${templatesTab==='Connection Message'?'active':''}" onclick="templatesTab='Connection Message';render();">Connection Message</div>
+    <div class="pill ${templatesTab==='Invitation Note'?'active':''}" onclick="templatesTab='Invitation Note';render();">Invitation Note</div>
+  </div>
+  ${list.map(t=>{
+    const overLimit = templatesTab==='Invitation Note' && t.body.length > INVITATION_NOTE_CHAR_LIMIT;
+    return `<div class="panel">
+      <div class="row" style="margin-bottom:8px;">
+        <h3 style="margin:0;">${t.name}</h3>
+        <span class="badge ${overLimit?'red':'blue'}">${t.body.length} chars${templatesTab==='Invitation Note' ? ' / '+INVITATION_NOTE_CHAR_LIMIT+' limit':''}</span>
+      </div>
+      <textarea id="tpl-${t.id}" oninput="editTemplateBody('${t.id}', this.value)">${t.body}</textarea>
+      <div class="small" style="margin-top:6px;">Preview: ${escapeHtml(renderTemplate(t, 'Hello,', '[Company]'))}</div>
+    </div>`;
+  }).join("")}`;
+}
+function editTemplateBody(id, value){
+  const t = templates.find(x=>x.id===id);
+  if(!t) return;
+  t.body = value;
+  saveTemplates();
+  // Re-render just the char-count badge without losing textarea focus:
+  // simplest reliable approach for this vanilla-JS demo is a light re-render.
+  const el = document.getElementById(`tpl-${id}`);
+  const pos = el ? el.selectionStart : null;
+  render();
+  const el2 = document.getElementById(`tpl-${id}`);
+  if(el2 && pos !== null){ el2.focus(); el2.setSelectionRange(pos, pos); }
 }
 
 function renderSettings(){
@@ -388,21 +712,38 @@ function renderSettings(){
   <div class="panel">
     <h3>Compliance</h3>
     <div class="small">"Use this tool only for relevant, legitimate, and policy-compliant business outreach. You are responsible for message content, consent, and compliance with LinkedIn policies and applicable laws."</div>
+    <div class="small" style="margin-top:8px;">LinkedIn connection data is entered manually or imported from LinkedIn's own official data-export tool — this app never logs into LinkedIn or scrapes it. Every message is drafted for you to copy and paste yourself; nothing is ever sent automatically.</div>
   </div>
   <div class="panel">
     <h3>Sender details</h3>
     <div class="small">Sabari — Getlux · +91 6363958868 · Business@getlux.co.in · www.getlux.co.in</div>
   </div>
   <div class="panel">
-    <h3>Batch defaults</h3>
-    <div class="small">Default batch size: 10 · Max/day: 1000 · Schedule: 9:00 AM Asia/Kolkata (paused by default)</div>
+    <h3>Reset demo data</h3>
+    <div class="small" style="margin-bottom:8px;">Clears contacts, template edits, and LinkedIn Data saved in this browser's local storage.</div>
+    <button class="btn danger" onclick="resetDemoData()">Reset demo data</button>
   </div>`;
+}
+function resetDemoData(){
+  if(!confirm("Reset all demo data saved in this browser? This cannot be undone.")) return;
+  localStorage.removeItem(LS_LINKEDIN_DATA);
+  localStorage.removeItem(LS_TEMPLATES);
+  localStorage.removeItem(LS_CONTACTS);
+  contacts = buildDefaultContacts();
+  templates = [...DEFAULT_CONNECTION_TEMPLATES, ...DEFAULT_INVITATION_TEMPLATES];
+  linkedinData = { totalConnections: 0, pendingSent: 0, pendingReceived: 0, lastUpdated: null };
+  nextContactId = Math.max(0, ...contacts.map(c=>c.id)) + 1;
+  render();
 }
 
 function render(){
   renderNav();
   const main = document.getElementById("main");
-  const renderers = {dashboard:renderDashboard, import:renderImport, contacts:renderContacts, queue:renderQueue, batch:renderBatch, pipeline:renderPipeline, campaigns:renderCampaigns, templates:renderTemplates, settings:renderSettings};
+  const renderers = {
+    dashboard:renderDashboard, linkedin:renderLinkedInPage, import:renderImport, contacts:renderContacts,
+    queue:renderQueue, batch:renderBatch, pipeline:renderPipeline, campaigns:renderCampaigns,
+    templates:renderTemplates, settings:renderSettings,
+  };
   main.innerHTML = renderers[currentPage]();
   renderModal();
 }
@@ -414,7 +755,8 @@ function renderModal(){
   <div class="modal-bg"><div class="modal">
     <h2>Before you begin</h2>
     <p style="font-size:13.5px;line-height:1.5;">Use this tool only for relevant, legitimate, and policy-compliant business outreach. You are responsible for message content, consent, and compliance with LinkedIn policies and applicable laws.</p>
-    <p class="small">This is a demo build. All sending shown here is simulated in your browser only — no real LinkedIn messages are ever sent from this demo.</p>
+    <p class="small">This is a demo build. All "sending" shown here is a manual copy-to-clipboard action that you confirm yourself — no message is ever sent from this demo automatically.</p>
+    <p class="small">LinkedIn connection data is entered manually by you, or imported from LinkedIn's own official data-export tool (Settings &amp; Privacy → Data Privacy → Get a copy of your data) — this demo never logs into LinkedIn or scrapes it.</p>
     <button class="btn primary" onclick="acceptCompliance()">I Understand — Continue</button>
   </div></div>`;
 }
