@@ -168,22 +168,27 @@ function templateTypeFor(contact){
 }
 
 /* ---------------- CONTACTS (seed data) ---------------- */
+// 5th column is a LinkedIn profile URL, used only to open a normal browser
+// tab for the human to click LinkedIn's own "Connect" button themselves
+// (see connectOnLinkedIn()) — never used to log in, scrape, or auto-click
+// anything on linkedin.com. Two contacts are deliberately left without a
+// URL to demonstrate the disabled "Connect on LinkedIn" state.
 const rawContacts = [
- ["Contact A","Collections Manager","Bright Finserv NBFC","He/Him"],
- ["Contact B","Regional Collection Head","Suvidha Capital","She/Her"],
- ["Contact C","Software Engineer","Bright Finserv NBFC",null],
- ["Contact D","Credit Operations Manager","Rupeeway Fintech",null],
- ["Contact E","Recovery Manager","Trustline NBFC","He/Him"],
- ["Contact F","HR Business Partner","Trustline NBFC",null],
- ["Contact G","Head of Collections","Suvidha Capital",null],
- ["Contact H","Loan Recovery Officer","Kredence Bank","She/Her"],
- ["Contact I","Marketing Lead","Kredence Bank",null],
- ["Contact J","Field Collections Manager","Payzo Finance","He/Him"],
- ["Contact K","Banking Collections Manager","National Trust Bank",null],
- ["Contact L","UX Designer","National Trust Bank",null],
- ["Contact M","NBFC Operations Manager","Suvidha Capital","She/Her"],
- ["Contact N","Legal Recovery Manager","Rupeeway Fintech",null],
- ["Contact O","Accounts Receivable Lead","Trustline NBFC",null],
+ ["Contact A","Collections Manager","Bright Finserv NBFC","He/Him","https://www.linkedin.com/in/contact-a-bright-finserv"],
+ ["Contact B","Regional Collection Head","Suvidha Capital","She/Her",null],
+ ["Contact C","Software Engineer","Bright Finserv NBFC",null,"https://www.linkedin.com/in/contact-c-bright-finserv"],
+ ["Contact D","Credit Operations Manager","Rupeeway Fintech",null,"https://www.linkedin.com/in/contact-d-rupeeway"],
+ ["Contact E","Recovery Manager","Trustline NBFC","He/Him","https://www.linkedin.com/in/contact-e-trustline"],
+ ["Contact F","HR Business Partner","Trustline NBFC",null,"https://www.linkedin.com/in/contact-f-trustline"],
+ ["Contact G","Head of Collections","Suvidha Capital",null,"https://www.linkedin.com/in/contact-g-suvidha"],
+ ["Contact H","Loan Recovery Officer","Kredence Bank","She/Her","https://www.linkedin.com/in/contact-h-kredence"],
+ ["Contact I","Marketing Lead","Kredence Bank",null,"https://www.linkedin.com/in/contact-i-kredence"],
+ ["Contact J","Field Collections Manager","Payzo Finance","He/Him","https://www.linkedin.com/in/contact-j-payzo"],
+ ["Contact K","Banking Collections Manager","National Trust Bank",null,"https://www.linkedin.com/in/contact-k-national-trust"],
+ ["Contact L","UX Designer","National Trust Bank",null,"https://www.linkedin.com/in/contact-l-national-trust"],
+ ["Contact M","NBFC Operations Manager","Suvidha Capital","She/Her","https://www.linkedin.com/in/contact-m-suvidha"],
+ ["Contact N","Legal Recovery Manager","Rupeeway Fintech",null,null],
+ ["Contact O","Accounts Receivable Lead","Trustline NBFC",null,"https://www.linkedin.com/in/contact-o-trustline"],
 ];
 
 function buildDefaultContacts(){
@@ -191,11 +196,12 @@ function buildDefaultContacts(){
     const q = isQualified(r[1], r[2]);
     return {
       id:i+1, name:r[0], role:r[1], company:r[2], pronouns:r[3],
+      linkedinUrl:r[4]||null,
       qualified:q.qualified, reason:q.reason,
       stage: q.qualified ? "Qualified" : "Skipped",
       connectionStatus: "Not Connected",
       templateId: null, message:null, messageStatus:"pending", // pending | copied | sent
-      sentAt:null, reply:null, existingConv:false,
+      sentAt:null, reply:null, existingConv:false, connectHintShown:false,
     };
   });
 }
@@ -519,16 +525,107 @@ function renderImport(){
 
 function renderContacts(){
   return `
-  <div class="topbar"><div><h1>Contacts</h1><div class="sub">${contacts.length} total</div></div></div>
+  <div class="topbar"><div><h1>Contacts</h1><div class="sub">${contacts.length} total</div></div>
+    <button class="btn primary" onclick="openAddConnection()">+ Add Connection</button>
+  </div>
   <div class="panel">
-    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Connection status</th><th>Qualification</th><th>Stage</th></tr></thead>
+    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>LinkedIn</th><th>Connection status</th><th>Qualification</th><th>Stage</th></tr></thead>
     <tbody>${contacts.map(c=>`<tr>
       <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.role)}</td><td>${escapeHtml(c.company)}</td>
+      <td>${c.linkedinUrl ? `<a href="${escapeHtml(c.linkedinUrl)}" target="_blank" rel="noopener">profile</a>` : '<span class="small">—</span>'}</td>
       <td>${connectionBadge(c.connectionStatus)}</td>
       <td class="small">${escapeHtml(c.reason)}</td>
       <td>${stageBadge(c.stage)}</td>
     </tr>`).join("")}</tbody></table>
   </div>`;
+}
+
+/* ---------------- ADD CONNECTION (single manual entry, no CSV needed) ----------------
+   Creates exactly one contact using the same shape/logic a CSV import row
+   would (qualification keyword match, LinkedIn URL normalization/dedupe,
+   default pipeline stage) — this is a convenience for logging one person
+   at a time, not a bulk import, and never touches linkedin.com itself. */
+let addConnectionOpen = false;
+function openAddConnection(){ addConnectionOpen = true; render(); }
+function closeAddConnection(){ addConnectionOpen = false; render(); }
+
+function renderAddConnectionModal(){
+  return `
+  <div class="modal-bg"><div class="modal">
+    <h2>Add Connection</h2>
+    <div class="small" style="margin-bottom:14px;">
+      Manually log one person you already know — creates a contact the same way importing a CSV row would. This is
+      not a bulk import; use Import CSV for a full file.
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="field-label">Name</label>
+      <input type="text" id="ac-name" style="width:100%;" placeholder="Full name" />
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="field-label">Company</label>
+      <input type="text" id="ac-company" style="width:100%;" />
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="field-label">Position / Title</label>
+      <input type="text" id="ac-position" style="width:100%;" />
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="field-label">LinkedIn Profile URL</label>
+      <input type="text" id="ac-url" style="width:100%;" placeholder="https://www.linkedin.com/in/..." />
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="field-label">Pronoun (used only for the explicit greeting rule — never inferred from name)</label>
+      <select id="ac-pronouns" style="width:100%;">
+        <option value="">Not specified</option>
+        <option value="He/Him">He/Him</option>
+        <option value="She/Her">She/Her</option>
+      </select>
+    </div>
+    <div style="margin-bottom:18px;">
+      <label class="field-label">Connection status</label>
+      <select id="ac-status" style="width:100%;">
+        <option value="Connected" selected>Connected (already connected on LinkedIn)</option>
+        <option value="Not Connected">Not Connected (logging a prospect I haven't imported)</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="btn primary" onclick="submitAddConnection()">Add Connection</button>
+      <button class="btn" onclick="closeAddConnection()">Cancel</button>
+    </div>
+  </div></div>`;
+}
+
+function submitAddConnection(){
+  const name = document.getElementById('ac-name').value.trim();
+  const company = document.getElementById('ac-company').value.trim();
+  const position = document.getElementById('ac-position').value.trim();
+  const urlRaw = document.getElementById('ac-url').value.trim();
+  const pronouns = document.getElementById('ac-pronouns').value || null;
+  const connectionStatus = document.getElementById('ac-status').value;
+
+  if(!name){ alert('Name is required.'); return; }
+
+  const normalized = urlRaw ? urlRaw.trim().toLowerCase().replace(/\/+$/,"") : "";
+  if(normalized && contacts.some(c => (c.linkedinUrl||"").toLowerCase().replace(/\/+$/,"") === normalized)){
+    alert('A contact with this LinkedIn URL already exists.');
+    return;
+  }
+
+  // Same qualification + contact-shape logic runImport() uses for each CSV row.
+  const q = isQualified(position, company);
+  contacts.push({
+    id: nextContactId++, name, role: position, company, pronouns,
+    linkedinUrl: urlRaw || null,
+    qualified: q.qualified, reason: q.reason,
+    stage: q.qualified ? "Qualified" : "Imported",
+    connectionStatus,
+    templateId: null, message: null, messageStatus: "pending",
+    sentAt: null, reply: null, existingConv: false,
+    connectedOn: null, connectHintShown: false,
+  });
+  saveContacts();
+  addConnectionOpen = false;
+  render();
 }
 
 function renderQueue(){
@@ -588,10 +685,15 @@ function renderBatch(){
           <div class="draft-box" contenteditable="true" oninput="editDraft(${c.id}, this.innerText)">${escapeHtml(msg)}</div>
           <div class="row" style="margin-top:8px;">
             <button class="btn primary" onclick="copyDraftToClipboard(${c.id})">Copy to Clipboard</button>
+            ${c.connectionStatus === "Not Connected" ? `
+            <button class="btn" ${!c.linkedinUrl ? "disabled" : ""}
+              title="${!c.linkedinUrl ? "Add a LinkedIn profile URL for this contact first" : "Copies the invitation note, then opens this contact's LinkedIn profile in a new tab"}"
+              onclick="connectOnLinkedIn(${c.id})">Connect on LinkedIn</button>` : ''}
             <button class="btn" ${c.messageStatus==="sent"?"disabled":""} onclick="markDraftSent(${c.id})" title="Click only after you've actually sent this on LinkedIn yourself">
               ${c.messageStatus==="sent" ? "Sent ✓" : "Mark as Sent"}
             </button>
           </div>
+          ${c.connectHintShown ? '<div class="small" style="margin-top:6px;">Note copied — paste it in the invite dialog on LinkedIn, then click Connect there yourself.</div>' : ''}
         </div>`;
       }).join("")}
     </div>`;
@@ -622,6 +724,21 @@ async function copyDraftToClipboard(id){
   c.message = finalText;
   c.messageStatus = "copied";
   c.stage = "Draft Copied — Awaiting Manual Send";
+  saveContacts();
+  render();
+}
+// Copies the drafted Invitation Note to the clipboard (reusing the exact
+// same copy logic as "Copy to Clipboard"), then opens the contact's
+// LinkedIn profile URL in a normal new browser tab for the human to click
+// LinkedIn's own "Connect" button and paste the note themselves. This
+// NEVER logs into LinkedIn, never scrapes it, and never clicks anything on
+// linkedin.com itself — it only opens a tab, exactly like clicking a link.
+async function connectOnLinkedIn(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c || !c.linkedinUrl) return;
+  await copyDraftToClipboard(id);
+  window.open(c.linkedinUrl, '_blank', 'noopener');
+  c.connectHintShown = true;
   saveContacts();
   render();
 }
@@ -750,15 +867,22 @@ function render(){
 
 function renderModal(){
   const root = document.getElementById("modalRoot");
-  if(complianceAccepted){ root.innerHTML=""; return; }
-  root.innerHTML = `
-  <div class="modal-bg"><div class="modal">
-    <h2>Before you begin</h2>
-    <p style="font-size:13.5px;line-height:1.5;">Use this tool only for relevant, legitimate, and policy-compliant business outreach. You are responsible for message content, consent, and compliance with LinkedIn policies and applicable laws.</p>
-    <p class="small">This is a demo build. All "sending" shown here is a manual copy-to-clipboard action that you confirm yourself — no message is ever sent from this demo automatically.</p>
-    <p class="small">LinkedIn connection data is entered manually by you, or imported from LinkedIn's own official data-export tool (Settings &amp; Privacy → Data Privacy → Get a copy of your data) — this demo never logs into LinkedIn or scrapes it.</p>
-    <button class="btn primary" onclick="acceptCompliance()">I Understand — Continue</button>
-  </div></div>`;
+  if(!complianceAccepted){
+    root.innerHTML = `
+    <div class="modal-bg"><div class="modal">
+      <h2>Before you begin</h2>
+      <p style="font-size:13.5px;line-height:1.5;">Use this tool only for relevant, legitimate, and policy-compliant business outreach. You are responsible for message content, consent, and compliance with LinkedIn policies and applicable laws.</p>
+      <p class="small">This is a demo build. All "sending" shown here is a manual copy-to-clipboard action that you confirm yourself — no message is ever sent from this demo automatically.</p>
+      <p class="small">LinkedIn connection data is entered manually by you, or imported from LinkedIn's own official data-export tool (Settings &amp; Privacy → Data Privacy → Get a copy of your data) — this demo never logs into LinkedIn or scrapes it.</p>
+      <button class="btn primary" onclick="acceptCompliance()">I Understand — Continue</button>
+    </div></div>`;
+    return;
+  }
+  if(addConnectionOpen){
+    root.innerHTML = renderAddConnectionModal();
+    return;
+  }
+  root.innerHTML = "";
 }
 function acceptCompliance(){ complianceAccepted = true; render(); }
 
