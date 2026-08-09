@@ -4,6 +4,7 @@ import { useUiStore } from '../state/store';
 
 const NAV_ITEMS: { to: string; label: string }[] = [
   { to: '/', label: 'Dashboard' },
+  { to: '/linkedin-data', label: 'LinkedIn Data' },
   { to: '/import', label: 'Import CSV' },
   { to: '/contacts', label: 'Contacts' },
   { to: '/companies', label: 'Companies' },

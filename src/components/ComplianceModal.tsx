@@ -35,6 +35,12 @@ export default function ComplianceModal(): JSX.Element | null {
           This application never automates LinkedIn sending, scraping, or bypasses LinkedIn protections. All
           "sending" happens in Mock Mode and is recorded only in your local database.
         </p>
+        <p className="compliance-note">
+          LinkedIn connection data (LinkedIn Data screen) is entered manually by you, or imported from LinkedIn's own
+          official data-export tool (Settings &amp; Privacy → Data Privacy → Get a copy of your data) — this app never
+          logs into LinkedIn or scrapes it. Every outreach message is drafted here for you to copy and paste into
+          LinkedIn yourself; the app never sends anything automatically.
+        </p>
         <label className="checkbox-row">
           <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
           I have read and understood this
