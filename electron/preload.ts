@@ -33,12 +33,15 @@ const api = {
   },
   templates: {
     list: () => invoke('templates:list'),
-    create: (name: string, body: string) => invoke('templates:create', name, body),
+    create: (name: string, body: string, type?: string) => invoke('templates:create', name, body, type),
     update: (id: string, fields: any) => invoke('templates:update', id, fields),
     delete: (id: string) => invoke('templates:delete', id),
   },
   messages: {
     list: (contactId?: string) => invoke('messages:list', contactId),
+    create: (input: any) => invoke('messages:create', input),
+    markManualSent: (id: string) => invoke('messages:markManualSent', id),
+    markDraftCopied: (id: string) => invoke('messages:markDraftCopied', id),
   },
   replies: {
     list: () => invoke('replies:list'),
@@ -71,8 +74,9 @@ const api = {
   },
   csv: {
     preview: (content: string) => invoke('csv:preview', content),
-    import: (content: string, mapping: any, sourceFilename: string) =>
-      invoke('csv:import', content, mapping, sourceFilename),
+    detectLinkedInExport: (headers: string[]) => invoke('csv:detectLinkedInExport', headers),
+    import: (content: string, mapping: any, sourceFilename: string, connectionStatus?: string) =>
+      invoke('csv:import', content, mapping, sourceFilename, connectionStatus),
     openAndRead: () => invoke('csv:openAndRead'),
   },
   verification: {
@@ -91,6 +95,10 @@ const api = {
   },
   dashboard: {
     metrics: () => invoke('dashboard:metrics'),
+  },
+  linkedinData: {
+    get: () => invoke('linkedinData:get'),
+    update: (fields: any) => invoke('linkedinData:update', fields),
   },
   exportData: {
     contactsCsv: () => invoke('export:contactsCsv'),
