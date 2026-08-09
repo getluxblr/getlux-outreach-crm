@@ -58,3 +58,21 @@ export function markMessageFailed(id: string, mockSendResult: string): void {
     .prepare("UPDATE outreach_messages SET status = 'Failed', mock_send_result = ? WHERE id = ?")
     .run(mockSendResult, id);
 }
+
+// Used by the copy-to-clipboard draft workflow: the user copied the draft
+// and pasted/sent it themselves inside their own LinkedIn tab, then came
+// back and explicitly clicked "Mark as Sent". This never fires
+// automatically and never touches linkedin.com.
+export function markMessageManualSent(id: string): void {
+  getDb()
+    .prepare("UPDATE outreach_messages SET status = 'Sent (Manual)', sent_at = ? WHERE id = ?")
+    .run(nowIso(), id);
+}
+
+// Used when the user copies a draft to their clipboard, before they've
+// confirmed sending it.
+export function markMessageDraftCopied(id: string): void {
+  getDb()
+    .prepare("UPDATE outreach_messages SET status = 'Draft Copied' WHERE id = ?")
+    .run(id);
+}

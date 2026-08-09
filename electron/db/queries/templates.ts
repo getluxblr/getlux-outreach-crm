@@ -9,16 +9,20 @@ export function getTemplate(id: string): any {
   return getDb().prepare('SELECT * FROM message_templates WHERE id = ?').get(id);
 }
 
-export function createTemplate(name: string, body: string): string {
+export function createTemplate(
+  name: string,
+  body: string,
+  type: 'Invitation Note' | 'Connection Message' = 'Connection Message',
+): string {
   const id = newId();
   const now = nowIso();
   getDb()
-    .prepare('INSERT INTO message_templates (id, name, body, is_active, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)')
-    .run(id, name, body, now, now);
+    .prepare('INSERT INTO message_templates (id, name, body, type, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)')
+    .run(id, name, body, type, now, now);
   return id;
 }
 
-export function updateTemplate(id: string, fields: { name?: string; body?: string; is_active?: number }): void {
+export function updateTemplate(id: string, fields: { name?: string; body?: string; type?: string; is_active?: number }): void {
   const db = getDb();
   const setClauses: string[] = [];
   const params: any[] = [];
