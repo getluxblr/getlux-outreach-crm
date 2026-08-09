@@ -13,12 +13,14 @@ interface Draft {
   role: string;
   pronouns: string | null;
   connectionStatus: string;
+  linkedinUrl: string | null;
   templateType: TemplateType;
   qualificationReason: string | null;
   templateId: string;
   message: string;
   messageDbId: string | null;
   status: 'pending' | 'copied' | 'sent';
+  connectHintShown: boolean;
 }
 
 function templateTypeFor(contact: any): TemplateType {
@@ -59,12 +61,14 @@ export default function BatchSend(): JSX.Element {
           role: c.verified_current_title || c.csv_position || '',
           pronouns: c.pronouns_found,
           connectionStatus: c.contact_status || 'Not Connected',
+          linkedinUrl: c.linkedin_url || null,
           templateType,
           qualificationReason: c.qualification_reason,
           templateId: defaultTemplate?.id || '',
           message,
           messageDbId: null,
           status: 'pending',
+          connectHintShown: false,
         };
       });
       setDrafts(built);
@@ -128,6 +132,20 @@ export default function BatchSend(): JSX.Element {
     } finally {
       setBusyId(null);
     }
+  };
+
+  // Copies the drafted Invitation Note to the clipboard (reusing the exact
+  // same copyToClipboard logic above), then opens the contact's LinkedIn
+  // profile URL in a normal new browser tab via Electron's shell.openExternal
+  // — the same as the user clicking a hyperlink themselves. This NEVER logs
+  // into LinkedIn, never scrapes it, and never clicks anything on
+  // linkedin.com itself; the human pastes the note and clicks LinkedIn's own
+  // "Connect" button there manually.
+  const connectOnLinkedIn = async (draft: Draft) => {
+    if (!draft.linkedinUrl) return;
+    await copyToClipboard(draft);
+    await api.shell.openExternal(draft.linkedinUrl);
+    updateDraft(draft.contactId, { connectHintShown: true });
   };
 
   // The ONLY way a contact's stage becomes "Outreach Sent" — always a
@@ -209,6 +227,20 @@ export default function BatchSend(): JSX.Element {
                 >
                   Copy to Clipboard
                 </button>{' '}
+                {d.connectionStatus !== 'Connected' && (
+                  <button
+                    className="btn"
+                    disabled={busyId === d.contactId || !d.linkedinUrl}
+                    onClick={() => connectOnLinkedIn(d)}
+                    title={
+                      d.linkedinUrl
+                        ? "Copies the invitation note, then opens this contact's LinkedIn profile in a new tab"
+                        : 'Add a LinkedIn profile URL for this contact first'
+                    }
+                  >
+                    Connect on LinkedIn
+                  </button>
+                )}{' '}
                 <button
                   className="btn"
                   disabled={busyId === d.contactId || d.status === 'sent'}
@@ -218,6 +250,11 @@ export default function BatchSend(): JSX.Element {
                   {d.status === 'sent' ? 'Sent ✓' : 'Mark as Sent'}
                 </button>
               </div>
+              {d.connectHintShown && (
+                <p className="page-subtitle" style={{ marginTop: 6 }}>
+                  Note copied — paste it in the invite dialog on LinkedIn, then click Connect there yourself.
+                </p>
+              )}
             </div>
           ))}
         </div>
