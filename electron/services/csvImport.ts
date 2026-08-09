@@ -134,6 +134,54 @@ export function importCsv(
   return summary;
 }
 
+export interface ManualContactInput {
+  full_name: string;
+  linkedin_url?: string | null;
+  company?: string | null;
+  position?: string | null;
+  pronouns_found?: string | null; // 'He/Him' | 'She/Her' | null — explicit only, never inferred
+  connection_status?: 'Connected' | 'Not Connected';
+}
+
+/**
+ * createManualContact
+ *
+ * Adds a single contact from the Contacts screen's "Add Connection" quick
+ * form — reuses the exact same upsertContactFromImport()/isQualified()
+ * logic a CSV import row uses (dedupe by normalized LinkedIn URL,
+ * qualification keyword match, default pipeline stage) so there is no
+ * separate create-contact code path. This never talks to linkedin.com;
+ * the LinkedIn URL is only stored for later use by the "Connect on
+ * LinkedIn" button, which just opens a normal browser tab.
+ */
+export function createManualContact(input: ManualContactInput): { outcome: ImportOutcome; id: string | null } {
+  const full_name = (input.full_name || '').trim();
+  const csv_company = input.company?.trim() || null;
+  const csv_position = input.position?.trim() || null;
+  const linkedin_url = (input.linkedin_url || '').trim();
+  const connection_status = input.connection_status || 'Connected';
+
+  const qualification = isQualified(csv_position, '', csv_company);
+
+  const result = upsertContactFromImport({
+    full_name,
+    linkedin_url,
+    csv_company,
+    csv_position,
+    source_filename: 'Manual entry (Add Connection)',
+    qualification_reason: qualification.qualified ? qualification.reason : null,
+    crm_pipeline_stage: qualification.qualified ? 'Qualified' : 'Imported',
+    contact_status: connection_status,
+    pronouns_found: input.pronouns_found ?? null,
+  });
+
+  if (result.id) {
+    logActivity('manual_contact_add', `Added connection: ${full_name}`, { contactId: result.id });
+  }
+
+  return result;
+}
+
 function tally(summary: ImportSummary, outcome: ImportOutcome): void {
   if (outcome === 'imported') summary.imported++;
   else if (outcome === 'updated') summary.updated++;
