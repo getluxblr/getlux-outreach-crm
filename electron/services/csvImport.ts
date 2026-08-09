@@ -24,6 +24,45 @@ export interface ImportSummary {
   total: number;
 }
 
+// Column names (case-insensitive, exact) used by LinkedIn's own official
+// self-service data export (Settings & Privacy -> Data Privacy -> Get a
+// copy of your data -> "Connections"). Detecting this format lets Import
+// CSV auto-map columns and mark these contacts connectionStatus =
+// 'Connected'. This only ever reads a file the user has already downloaded
+// themselves from LinkedIn's export tool — nothing here logs into or
+// scrapes linkedin.com.
+const LINKEDIN_EXPORT_HEADERS = ['first name', 'last name', 'url', 'company', 'position', 'connected on'];
+
+/**
+ * detectLinkedInExportFormat
+ *
+ * Returns true if the given CSV headers look like LinkedIn's official
+ * Connections.csv export (case-insensitive match on the known column set).
+ */
+export function detectLinkedInExportFormat(headers: string[]): boolean {
+  const lower = headers.map((h) => h.trim().toLowerCase());
+  return LINKEDIN_EXPORT_HEADERS.every((needed) => lower.includes(needed));
+}
+
+/**
+ * autoMapLinkedInExport
+ *
+ * Builds a CsvFieldMapping for a detected LinkedIn Connections.csv export,
+ * matching headers case-insensitively.
+ */
+export function autoMapLinkedInExport(headers: string[]): CsvFieldMapping {
+  const find = (needle: string) => headers.find((h) => h.trim().toLowerCase() === needle) || '';
+  return {
+    firstName: find('first name'),
+    lastName: find('last name'),
+    linkedinUrl: find('url'),
+    company: find('company'),
+    position: find('position'),
+    connectedOn: find('connected on'),
+    email: find('email address') || find('email'),
+  };
+}
+
 export function parseCsv(content: string): { headers: string[]; rows: Record<string, string>[] } {
   // LinkedIn's Connections.csv export has a few notes lines before the real
   // header row; skip any leading lines that don't look like the header.
@@ -44,6 +83,7 @@ export function importCsv(
   content: string,
   mapping: CsvFieldMapping,
   sourceFilename: string,
+  connectionStatus: 'Connected' | 'Not Connected' = 'Not Connected',
 ): ImportSummary {
   const { rows } = parseCsv(content);
 
@@ -83,6 +123,7 @@ export function importCsv(
       source_filename: sourceFilename,
       qualification_reason: qualification.qualified ? qualification.reason : null,
       crm_pipeline_stage: qualification.qualified ? 'Qualified' : 'Imported',
+      contact_status: connectionStatus,
     });
 
     tally(summary, outcome);
