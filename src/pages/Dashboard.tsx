@@ -50,9 +50,17 @@ const CARD_DEFS: { key: keyof Metrics; label: string; suffix?: string }[] = [
   { key: 'repliesToday', label: 'Replies Today' },
 ];
 
+const STALE_DAYS = 7;
+
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export default function Dashboard(): JSX.Element {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [stageCounts, setStageCounts] = useState<{ stage: string; count: number }[]>([]);
+  const [linkedinData, setLinkedinData] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -66,6 +74,7 @@ export default function Dashboard(): JSX.Element {
         setStageCounts(Object.entries(counts).map(([stage, count]) => ({ stage, count }))),
       )
       .catch(() => {});
+    api.linkedinData.get().then(setLinkedinData).catch(() => {});
   };
 
   useEffect(() => {
@@ -93,6 +102,36 @@ export default function Dashboard(): JSX.Element {
           ))}
         </div>
       )}
+      {linkedinData && (
+        <div className="panel">
+          <h2>LinkedIn Data</h2>
+          <p className="page-subtitle">Manually entered on the LinkedIn Data screen — never scraped or pulled automatically.</p>
+          <div className="card-grid">
+            <div className="metric-card">
+              <div className="metric-value">{linkedinData.totalConnections}</div>
+              <div className="metric-label">Total Connections</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{linkedinData.pendingSent}</div>
+              <div className="metric-label">Pending Sent Requests</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value">{linkedinData.pendingReceived}</div>
+              <div className="metric-label">Pending Received Requests</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-value" style={{ fontSize: 14 }}>
+                {linkedinData.lastUpdated ? new Date(linkedinData.lastUpdated).toLocaleDateString() : 'Never'}
+              </div>
+              <div className="metric-label">Last Updated</div>
+            </div>
+          </div>
+          {(daysSince(linkedinData.lastUpdated) === null || (daysSince(linkedinData.lastUpdated) as number) > STALE_DAYS) && (
+            <span className="badge badge-warning">Update your LinkedIn numbers</span>
+          )}
+        </div>
+      )}
+
       {stageCounts.length > 0 && (
         <div className="panel">
           <h2>Contacts by pipeline stage</h2>

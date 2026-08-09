@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { selectGreeting } from '../../shared/greeting';
 import { renderTemplate } from '../../shared/templates';
+import type { TemplateType } from '../../shared/types';
 
 const BATCH_SIZES = [1, 5, 10, 25, 50, 75, 100, 125, 150];
 
@@ -11,10 +12,17 @@ interface Draft {
   company: string;
   role: string;
   pronouns: string | null;
+  connectionStatus: string;
+  templateType: TemplateType;
   qualificationReason: string | null;
   templateId: string;
   message: string;
-  skip: boolean;
+  messageDbId: string | null;
+  status: 'pending' | 'copied' | 'sent';
+}
+
+function templateTypeFor(contact: any): TemplateType {
+  return contact.contact_status === 'Connected' ? 'Connection Message' : 'Invitation Note';
 }
 
 export default function BatchSend(): JSX.Element {
@@ -22,29 +30,27 @@ export default function BatchSend(): JSX.Element {
   const [batchSize, setBatchSize] = useState(10);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [progress, setProgress] = useState<any | null>(null);
-  const [batchRunId, setBatchRunId] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     api.templates.list().then(setTemplates);
-    const off = api.batch.onProgress((payload) => {
-      setProgress(payload);
-      if (payload.done) setRunning(false);
-    });
-    return off;
   }, []);
+
+  const templatesOfType = (type: TemplateType) => templates.filter((t) => (t.type || 'Connection Message') === type);
 
   const buildDrafts = async () => {
     setLoadingDrafts(true);
     try {
       const verified = await api.contacts.list({ pipelineStage: 'Verified' });
       const selected = verified.slice(0, batchSize);
-      const defaultTemplate = templates[0];
       const built: Draft[] = selected.map((c: any) => {
         const greeting = selectGreeting(c.pronouns_found);
         const company = c.verified_current_company || c.csv_company || 'your organization';
+        const templateType = templateTypeFor(c);
+        // Auto-select the correct template type for this contact: Invitation
+        // Note if not yet connected, Connection Message if already connected.
+        const candidates = templatesOfType(templateType);
+        const defaultTemplate = candidates[0] || templates[0];
         const message = defaultTemplate ? renderTemplate(defaultTemplate, { greeting, company }) : '';
         return {
           contactId: c.id,
@@ -52,10 +58,13 @@ export default function BatchSend(): JSX.Element {
           company,
           role: c.verified_current_title || c.csv_position || '',
           pronouns: c.pronouns_found,
+          connectionStatus: c.contact_status || 'Not Connected',
+          templateType,
           qualificationReason: c.qualification_reason,
           templateId: defaultTemplate?.id || '',
           message,
-          skip: false,
+          messageDbId: null,
+          status: 'pending',
         };
       });
       setDrafts(built);
@@ -77,35 +86,83 @@ export default function BatchSend(): JSX.Element {
     updateDraft(contactId, { templateId, message });
   };
 
-  const confirmAndSend = async () => {
-    setConfirmOpen(false);
-    setRunning(true);
-    setProgress(null);
-    const items = drafts
-      .filter((d) => !d.skip)
-      .map((d) => ({
-        contactId: d.contactId,
-        message: d.message,
-        templateId: d.templateId,
-        greeting: selectGreeting(d.pronouns as any),
-        company: d.company,
-      }));
-    const id = await api.batch.run(null, items);
-    setBatchRunId(id);
+  const editMessage = (contactId: string, message: string) => {
+    // Editing the draft after it's been copied/sent starts a fresh draft
+    // cycle for that contact — it does not retroactively change what was
+    // already sent.
+    updateDraft(contactId, { message });
   };
 
-  const stopBatch = async () => {
-    if (batchRunId) await api.batch.stop(batchRunId);
+  // Creates the outreach_messages row for this draft if it doesn't exist
+  // yet, otherwise returns the existing one. Always returns a real id.
+  const ensureMessageId = async (draft: Draft): Promise<string> => {
+    if (draft.messageDbId) return draft.messageDbId;
+    const id: string = await api.messages.create({
+      contact_id: draft.contactId,
+      template_id: draft.templateId,
+      greeting_used: selectGreeting(draft.pronouns as any),
+      company_used: draft.company,
+      final_message: draft.message,
+      status: 'Draft Copied',
+    });
+    return id;
   };
 
-  const activeCount = useMemo(() => drafts.filter((d) => !d.skip).length, [drafts]);
+  // Copies the drafted message to the clipboard for the user to paste into
+  // LinkedIn themselves. This never sends anything — it only writes to the
+  // OS clipboard and marks the contact as "awaiting manual send" so it's
+  // clear a human still has to go paste and send it.
+  const copyToClipboard = async (draft: Draft) => {
+    setBusyId(draft.contactId);
+    try {
+      await navigator.clipboard.writeText(draft.message);
+
+      const alreadyHadId = !!draft.messageDbId;
+      const messageDbId = await ensureMessageId(draft);
+      if (alreadyHadId) {
+        await api.messages.markDraftCopied(messageDbId);
+      }
+
+      await api.contacts.update(draft.contactId, { crm_pipeline_stage: 'Draft Copied — Awaiting Manual Send' });
+      updateDraft(draft.contactId, { messageDbId, status: 'copied' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // The ONLY way a contact's stage becomes "Outreach Sent" — always a
+  // deliberate, explicit click by the human, made only after they've
+  // actually pasted and sent the message inside their own LinkedIn tab.
+  // Never triggered automatically.
+  const markAsSent = async (draft: Draft) => {
+    setBusyId(draft.contactId);
+    try {
+      const messageDbId = await ensureMessageId(draft);
+      await api.messages.markManualSent(messageDbId);
+      await api.contacts.update(draft.contactId, {
+        crm_pipeline_stage: 'Outreach Sent',
+        full_sent_message: draft.message,
+        sent_at: new Date().toISOString(),
+        message_variation_used: draft.templateId,
+      });
+      updateDraft(draft.contactId, { messageDbId, status: 'sent' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const copiedCount = useMemo(() => drafts.filter((d) => d.status !== 'pending').length, [drafts]);
+  const sentCount = useMemo(() => drafts.filter((d) => d.status === 'sent').length, [drafts]);
 
   return (
     <div>
       <h1>Batch Review &amp; Send</h1>
       <p className="page-subtitle">
-        Every message below requires your review before it is recorded. "Sending" here is fully simulated (mock
-        mode) and only writes to your local database — nothing is sent to LinkedIn.
+        For each contact below, a draft is auto-selected — an <strong>Invitation Note</strong> if they're not yet
+        connected on LinkedIn, or a <strong>Connection Message</strong> if they already are. Review or edit the text,
+        click <strong>Copy to Clipboard</strong>, then paste and send it yourself inside your own LinkedIn tab.
+        Nothing is ever sent from this app automatically — you must click <strong>Mark as Sent</strong> yourself,
+        after you've actually sent it, to record it here.
       </p>
 
       <div className="panel">
@@ -122,62 +179,47 @@ export default function BatchSend(): JSX.Element {
 
       {drafts.length > 0 && (
         <div className="panel">
-          <h2>Drafts ({activeCount} will be sent)</h2>
+          <h2>Drafts ({drafts.length} total — {copiedCount} copied, {sentCount} marked sent)</h2>
           {drafts.map((d) => (
             <div key={d.contactId} className="panel" style={{ marginBottom: 10 }}>
               <div className="toolbar">
                 <strong>{d.name}</strong>
                 <span className="badge badge-info">{d.company}</span>
                 <span>{d.role}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{d.qualificationReason}</span>
+                <span className={`badge ${d.connectionStatus === 'Connected' ? 'badge-success' : 'badge-warning'}`}>
+                  {d.connectionStatus}
+                </span>
+                <span className="badge badge-info">{d.templateType}</span>
                 <select value={d.templateId} onChange={(e) => changeTemplate(d.contactId, e.target.value)}>
-                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {templatesOfType(d.templateType).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                <label>
-                  <input type="checkbox" checked={d.skip} onChange={(e) => updateDraft(d.contactId, { skip: e.target.checked })} /> Skip
-                </label>
+                {d.status === 'copied' && <span className="badge badge-warning">Draft Copied — Awaiting Manual Send</span>}
+                {d.status === 'sent' && <span className="badge badge-success">Marked as Sent</span>}
               </div>
               <textarea
                 rows={8}
                 value={d.message}
-                onChange={(e) => updateDraft(d.contactId, { message: e.target.value })}
-                disabled={d.skip}
+                onChange={(e) => editMessage(d.contactId, e.target.value)}
               />
+              <div style={{ marginTop: 8 }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={busyId === d.contactId}
+                  onClick={() => copyToClipboard(d)}
+                >
+                  Copy to Clipboard
+                </button>{' '}
+                <button
+                  className="btn"
+                  disabled={busyId === d.contactId || d.status === 'sent'}
+                  onClick={() => markAsSent(d)}
+                  title="Click only after you've actually pasted and sent this message on LinkedIn yourself"
+                >
+                  {d.status === 'sent' ? 'Sent ✓' : 'Mark as Sent'}
+                </button>
+              </div>
             </div>
           ))}
-          <button className="btn btn-primary" onClick={() => setConfirmOpen(true)} disabled={running || activeCount === 0}>
-            Confirm and Send ({activeCount})
-          </button>
-        </div>
-      )}
-
-      {confirmOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-card">
-            <h2>Confirm batch send</h2>
-            <p>
-              You are about to (mock) send {activeCount} message(s). This simulates the send and writes results to
-              your local database only. No message is transmitted to LinkedIn.
-            </p>
-            <button className="btn" onClick={() => setConfirmOpen(false)}>Cancel</button>{' '}
-            <button className="btn btn-primary" onClick={confirmAndSend}>Confirm and Send</button>
-          </div>
-        </div>
-      )}
-
-      {(running || progress) && (
-        <div className="panel">
-          <h2>Batch progress</h2>
-          {progress?.current && <p>Current: {progress.current.name} — {progress.current.company} ({progress.current.status})</p>}
-          <div className="card-grid">
-            <div className="metric-card"><div className="metric-value">{progress?.sent ?? 0}</div><div className="metric-label">Sent</div></div>
-            <div className="metric-card"><div className="metric-value">{progress?.skipped ?? 0}</div><div className="metric-label">Skipped</div></div>
-            <div className="metric-card"><div className="metric-value">{progress?.failed ?? 0}</div><div className="metric-label">Failed</div></div>
-            <div className="metric-card"><div className="metric-value">{progress?.remaining ?? activeCount}</div><div className="metric-label">Remaining</div></div>
-          </div>
-          {progress?.detail && <p className="badge badge-warning">{progress.detail}</p>}
-          {running && <button className="btn btn-danger" onClick={stopBatch}>Stop batch</button>}
-          {progress?.done && <p>Batch finished{progress.stopped ? ' (stopped early)' : ''}.</p>}
         </div>
       )}
     </div>

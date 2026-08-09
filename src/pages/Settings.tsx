@@ -37,12 +37,19 @@ export default function Settings(): JSX.Element {
       </div>
 
       <div className="panel">
-        <h2>Mock mode</h2>
+        <h2>Mock mode &amp; manual sending</h2>
         <p>
-          This application only ever operates in Mock Mode. All LinkedIn verification and sending is simulated with
-          randomized in-memory results — no network request is ever made to linkedin.com. See
+          LinkedIn profile verification only ever operates in Mock Mode — results are simulated with randomized
+          in-memory data and no network request is ever made to linkedin.com. See
           <code> electron/services/linkedin/adapter.ts</code> for the interface a real, policy-compliant adapter
           would implement later.
+        </p>
+        <p>
+          Outreach messages are never sent automatically. The Batch Review &amp; Send screen drafts a message per
+          contact for you to <strong>Copy to Clipboard</strong>, paste and send yourself inside your own LinkedIn
+          tab, then <strong>Mark as Sent</strong> yourself. LinkedIn connection data (LinkedIn Data screen) is entered
+          manually or imported from LinkedIn's own official data-export tool — this app never logs into LinkedIn or
+          scrapes it.
         </p>
       </div>
     </div>

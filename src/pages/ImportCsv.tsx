@@ -19,6 +19,8 @@ export default function ImportCsv(): JSX.Element {
   const [headers, setHeaders] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [detectedLinkedInExport, setDetectedLinkedInExport] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'Connected' | 'Not Connected'>('Not Connected');
   const [summary, setSummary] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,17 +36,29 @@ export default function ImportCsv(): JSX.Element {
       setPreviewRows(preview.rows);
       setSummary(null);
 
-      // Best-effort auto-mapping based on common LinkedIn export headers.
-      const auto: Record<string, string> = {};
-      const find = (needle: string) => preview.headers.find((h) => h.toLowerCase().includes(needle));
-      auto.firstName = find('first name') || '';
-      auto.lastName = find('last name') || '';
-      auto.linkedinUrl = find('url') || '';
-      auto.company = find('company') || '';
-      auto.position = find('position') || '';
-      auto.connectedOn = find('connected on') || '';
-      auto.email = find('email') || '';
-      setMapping(auto);
+      // Detect LinkedIn's own official "Connections" data-export format
+      // (First Name, Last Name, URL, Email Address, Company, Position,
+      // Connected On) — case-insensitively — vs. a generic prospect list.
+      const detection = await api.csv.detectLinkedInExport(preview.headers);
+      setDetectedLinkedInExport(detection.isLinkedInExport);
+
+      if (detection.isLinkedInExport && detection.mapping) {
+        setMapping(detection.mapping);
+        setConnectionStatus('Connected');
+      } else {
+        // Best-effort auto-mapping for a generic prospect list (not yet connected).
+        const auto: Record<string, string> = {};
+        const find = (needle: string) => preview.headers.find((h) => h.toLowerCase().includes(needle));
+        auto.firstName = find('first name') || '';
+        auto.lastName = find('last name') || '';
+        auto.linkedinUrl = find('url') || find('linkedin') || '';
+        auto.company = find('company') || '';
+        auto.position = find('position') || '';
+        auto.connectedOn = find('connected on') || '';
+        auto.email = find('email') || '';
+        setMapping(auto);
+        setConnectionStatus('Not Connected');
+      }
     } catch (e: any) {
       setError(e.message);
     }
@@ -57,7 +71,7 @@ export default function ImportCsv(): JSX.Element {
       return;
     }
     try {
-      const result = await api.csv.import(content, mapping, filename);
+      const result = await api.csv.import(content, mapping, filename, connectionStatus);
       setSummary(result);
     } catch (e: any) {
       setError(e.message);
@@ -68,15 +82,30 @@ export default function ImportCsv(): JSX.Element {
     <div>
       <h1>Import CSV</h1>
       <p className="page-subtitle">
-        Import a LinkedIn Connections.csv export. Nothing here talks to linkedin.com — this only reads a local file
-        you choose.
+        Import either LinkedIn's own official <strong>Connections</strong> data export (Settings &amp; Privacy → Data
+        Privacy → Get a copy of your data), or a generic prospect list you're not yet connected to. Nothing here
+        talks to linkedin.com, logs into LinkedIn, or scrapes anything — this only reads a local file you choose and
+        that you already downloaded yourself.
       </p>
 
       <div className="panel">
         <div className="toolbar">
-          <button className="btn btn-primary" onClick={pickFile}>Choose Connections.csv…</button>
+          <button className="btn btn-primary" onClick={pickFile}>Choose CSV file…</button>
           {filename && <span>{filename}</span>}
         </div>
+        {headers.length > 0 && (
+          <p>
+            {detectedLinkedInExport ? (
+              <span className="badge badge-success">
+                Detected LinkedIn Connections export format — these contacts will be marked "Connected"
+              </span>
+            ) : (
+              <span className="badge badge-info">
+                Detected a generic prospect list — these contacts will be marked "Not Connected"
+              </span>
+            )}
+          </p>
+        )}
         {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
       </div>
 
@@ -99,7 +128,16 @@ export default function ImportCsv(): JSX.Element {
               </div>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={runImport}>Import {previewRows.length ? '' : ''}</button>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
+              Connection status for these contacts
+            </label>
+            <select value={connectionStatus} onChange={(e) => setConnectionStatus(e.target.value as any)}>
+              <option value="Not Connected">Not Connected (drafts will use Invitation Note templates)</option>
+              <option value="Connected">Connected (drafts will use Connection Message templates)</option>
+            </select>
+          </div>
+          <button className="btn btn-primary" onClick={runImport}>Import</button>
         </div>
       )}
 

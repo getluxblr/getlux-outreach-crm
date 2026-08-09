@@ -27,13 +27,19 @@ export default function QualifiedQueue(): JSX.Element {
         {!loading && contacts.length === 0 && <div className="empty-state">No qualified contacts waiting. Import a CSV to populate this queue.</div>}
         {!loading && contacts.length > 0 && (
           <table>
-            <thead><tr><th>Name</th><th>Company (CSV)</th><th>Position</th><th>Qualification reason</th><th>Stage</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Company (CSV)</th><th>Position</th><th>Connection status</th><th>Draft template on send</th><th>Qualification reason</th><th>Stage</th><th></th></tr></thead>
             <tbody>
               {contacts.map((c) => (
                 <tr key={c.id}>
                   <td>{c.full_name}</td>
                   <td>{c.csv_company}</td>
                   <td>{c.csv_position}</td>
+                  <td>
+                    <span className={`badge ${c.contact_status === 'Connected' ? 'badge-success' : 'badge-warning'}`}>
+                      {c.contact_status || 'Not Connected'}
+                    </span>
+                  </td>
+                  <td>{c.contact_status === 'Connected' ? 'Connection Message' : 'Invitation Note'}</td>
                   <td>{c.qualification_reason}</td>
                   <td><StageBadge stage={c.crm_pipeline_stage} /></td>
                   <td><button className="btn btn-primary" onClick={() => sendToVerification(c.id)}>Send to verification</button></td>
