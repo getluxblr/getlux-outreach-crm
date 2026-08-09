@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "source": "Connections.csv",
+  "nextQualifiedIndex": 103,
+  "lastRun": {
+    "at": "2026-08-09T16:25:57.972Z",
+    "processed": 50,
+    "sent": 43,
+    "status": "completed"
+  },
+  "note": "The database is the main source of truth. This file stores portable queue progress and batch summary."
+}

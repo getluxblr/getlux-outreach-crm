@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-electron/
+release/
+*.log
+.DS_Store
+*.sqlite
+*.sqlite3
+outreach-state.json
+.vite/
+coverage/
+*.local

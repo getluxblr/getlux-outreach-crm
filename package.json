@@ -1,0 +1,75 @@
+{
+  "name": "getlux-outreach-crm",
+  "version": "1.0.0",
+  "description": "Local-first CRM and LinkedIn outreach drafting/tracking tool for Getlux (mock mode only — no LinkedIn automation).",
+  "main": "dist-electron/electron/main.js",
+  "author": "Getlux",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently -k -n VITE,ELECTRON -c blue,green \"vite\" \"npm:dev:electron\"",
+    "dev:electron": "npm run build:electron && wait-on tcp:5173 && cross-env NODE_ENV=development electron dist-electron/electron/main.js",
+    "build": "npm run build:renderer && npm run build:electron",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p electron/tsconfig.json && npm run copy:migrations",
+    "copy:migrations": "node -e \"const fs=require('fs');fs.mkdirSync('dist-electron/electron/db/migrations',{recursive:true});for(const f of fs.readdirSync('electron/db/migrations'))fs.copyFileSync('electron/db/migrations/'+f,'dist-electron/electron/db/migrations/'+f);\"",
+    "dist:win": "npm run build && electron-builder --win nsis portable",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p electron/tsconfig.json"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "papaparse": "^5.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.1",
+    "recharts": "^2.12.7",
+    "uuid": "^9.0.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.14.10",
+    "@types/papaparse": "^5.3.14",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.1",
+    "vitest": "^2.0.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.getlux.outreachcrm",
+    "productName": "Getlux Outreach CRM",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "extraResources": []
+  }
+}
