@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Getlux Outreach CRM — Live Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#f5f7fa; --panel:#ffffff; --border:#e2e6ec; --text:#1a2233; --muted:#6b7688;
+    --accent:#2f6feb; --accent-ink:#ffffff;
+    --green:#16a34a; --green-bg:#e8f8ee;
+    --blue:#2563eb; --blue-bg:#eaf1ff;
+    --amber:#d97706; --amber-bg:#fff6e5;
+    --red:#dc2626; --red-bg:#fdeaea;
+    --radius:10px;
+  }
+  [data-theme="dark"]{
+    --bg:#0f1420; --panel:#161c2b; --border:#28304a; --text:#e7ebf5; --muted:#93a0bd;
+    --accent:#5b8def; --accent-ink:#08101f;
+    --green:#34d17c; --green-bg:#0f2a1c;
+    --blue:#6ea8ff; --blue-bg:#0f1e3a;
+    --amber:#f2b74e; --amber-bg:#332405;
+    --red:#ff6b6b; --red-bg:#33131a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  .app{display:flex;min-height:100vh;}
+  .sidebar{width:230px;background:var(--panel);border-right:1px solid var(--border);padding:16px 10px;flex-shrink:0;}
+  .brand{display:flex;align-items:center;gap:8px;padding:8px 10px 18px;font-weight:700;font-size:16px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:13.5px;margin-bottom:2px;}
+  .nav-item:hover{background:var(--bg);}
+  .nav-item.active{background:var(--accent);color:var(--accent-ink);font-weight:600;}
+  .main{flex:1;padding:22px 28px;overflow-x:auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  h1{font-size:20px;margin:0;}
+  .sub{color:var(--muted);font-size:13px;margin-top:3px;}
+  .btn{border:1px solid var(--border);background:var(--panel);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;}
+  .btn:hover{border-color:var(--accent);}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .btn.danger{background:var(--red);color:#fff;border-color:var(--red);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+  .card .k{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .card .v{font-size:22px;font-weight:700;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:18px;}
+  .panel h3{margin:0 0 12px;font-size:15px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600;}
+  .badge.green{background:var(--green-bg);color:var(--green);}
+  .badge.blue{background:var(--blue-bg);color:var(--blue);}
+  .badge.amber{background:var(--amber-bg);color:var(--amber);}
+  .badge.red{background:var(--red-bg);color:var(--red);}
+  .row{display:flex;gap:10px;align-items:center;}
+  .grow{flex:1;}
+  input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;}
+  textarea{width:100%;min-height:150px;resize:vertical;}
+  .kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
+  .kcol{min-width:190px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;}
+  .kcol h4{font-size:12px;margin:0 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  .kcard{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12.5px;}
+  .kcard b{display:block;font-size:12.5px;}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:50;}
+  .modal{background:var(--panel);border-radius:12px;padding:24px;max-width:520px;width:92%;border:1px solid var(--border);}
+  .modal h2{margin-top:0;font-size:17px;}
+  .pill-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .pill{padding:6px 12px;border-radius:20px;font-size:12.5px;border:1px solid var(--border);cursor:pointer;color:var(--muted);}
+  .pill.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .draft-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12.5px;white-space:pre-wrap;line-height:1.5;}
+  .progress-wrap{background:var(--bg);border:1px solid var(--border);border-radius:8px;height:8px;overflow:hidden;margin:10px 0;}
+  .progress-bar{height:100%;background:var(--accent);width:0%;transition:width .3s;}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;}
+  .small{font-size:11.5px;color:var(--muted);}
+  .compliance-banner{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:16px;}
+  ::-webkit-scrollbar{height:8px;width:8px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+  <div class="sidebar">
+    <div class="brand"><span class="dot"></span> Getlux CRM</div>
+    <div id="nav"></div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <div class="toggle" onclick="toggleTheme()">🌓 Toggle dark / light</div>
+    </div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ---------------- MOCK DATA ---------------- */
+const templates = [
+{id:1,name:"Template 1",body:"Hi {{GREETING}}\n\nI noticed your role in collections at {{COMPANY}}.\n\nGetlux supports NBFCs and lending businesses with professional collection support, including tele-calling and field-collection requirements. We currently support organizations such as IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nOur pan-India tele-calling team includes 150+ trained callers, supported by offices across Bangalore, Tamil Nadu, and Kerala.\n\nIf collection support may be useful for {{COMPANY}}, please let us know. We would be happy to share our company profile.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:2,name:"Template 2",body:"Hi {{GREETING}}\n\nSaw that you are currently handling collections or recovery at {{COMPANY}}.\n\nGetlux provides collection-agency support for NBFCs, lenders, and financial-service companies. Our team manages pan-India tele-calling collections through 150+ trained tele-callers, with operational presence in Bangalore, Tamil Nadu, and Kerala.\n\nWe support companies including IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould it be okay to share the Getlux company profile for your reference?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:3,name:"Template 3",body:"Hi {{GREETING}}\n\nI came across your collections role at {{COMPANY}}.\n\nGetlux helps lending and NBFC businesses strengthen their collection operations through pan-India tele-calling support. We have 150+ trained collection callers and offices across Bangalore, Tamil Nadu, and Kerala.\n\nOur experience includes supporting organizations such as IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nIf you are exploring collection-agency support for {{COMPANY}}, I can share our profile and service details.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:4,name:"Template 4",body:"Hello {{GREETING}}\n\nYour experience in collections at {{COMPANY}} caught my attention.\n\nGetlux is a collection-support partner for NBFCs and lenders, running pan-India tele-calling operations with 150+ trained callers from offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe've worked with organizations like IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nHappy to send over our profile if it's relevant for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:5,name:"Template 5",body:"Hi {{GREETING}}\n\nNoticed you lead collections-related work at {{COMPANY}}.\n\nAt Getlux, we support NBFCs, banks, and fintechs with pan-India tele-calling collections — 150+ trained tele-callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nOrganizations we support include IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nLet me know if a quick profile share would be useful for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:6,name:"Template 6",body:"Hi {{GREETING}}\n\nCame across your collections/recovery profile at {{COMPANY}}.\n\nGetlux provides pan-India tele-calling collection support for NBFCs and lenders, with 150+ trained callers across offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe currently support IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould you be open to a short profile share for {{COMPANY}}?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:7,name:"Template 7",body:"Hi {{GREETING}}\n\nYour work in collections at {{COMPANY}} stood out.\n\nGetlux supports lending and NBFC businesses with tele-calling and field-collection capacity — 150+ trained callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nReference clients include IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nHappy to share more details if useful for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:8,name:"Template 8",body:"Hello {{GREETING}}\n\nI see you're involved in collections at {{COMPANY}}.\n\nGetlux runs pan-India tele-calling collections for NBFCs and financial-service companies, with 150+ trained tele-callers and offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe support names like IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nOpen to sharing our company profile if relevant for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:9,name:"Template 9",body:"Hi {{GREETING}}\n\nYour collections background at {{COMPANY}} caught my eye.\n\nGetlux is a tele-calling collections partner to NBFCs and lenders across India — 150+ trained callers, offices in Bangalore, Tamil Nadu, and Kerala.\n\nWe currently work with IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nWould a short profile overview be useful for {{COMPANY}}?\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+{id:10,name:"Template 10",body:"Hi {{GREETING}}\n\nSaw your role handling recovery/collections at {{COMPANY}}.\n\nGetlux offers pan-India tele-calling collection support for NBFCs and lending businesses — 150+ trained callers, offices across Bangalore, Tamil Nadu, and Kerala.\n\nOur client base includes IDFC Bank, KreditBee, Navi Finserv, Payrupik, Nira Finance, Moneyview, Kissht, and Groww.\n\nLet me know if it's worth a quick conversation for {{COMPANY}}.\n\nRegards,\nSabari – Getlux\n+91 6363958868 | Business@getlux.co.in | www.getlux.co.in"},
+];
+
+const QUAL_KEYWORDS = ["collection","collections","recovery","debt recovery","loan recovery","legal recovery","field collections","tele-calling collections","receivables","accounts receivable","delinquency","credit","credit operations","lending","nbfc","bank","banking","financial services","finance operations","loan servicing","repayment","risk collections","payment recovery","asset recovery"];
+
+function isQualified(role, company){
+  const hay = (role+" "+company).toLowerCase();
+  const hit = QUAL_KEYWORDS.find(k=>hay.includes(k));
+  return hit ? {qualified:true, reason:"Matched keyword: \""+hit+"\""} : {qualified:false, reason:"No qualifying keyword found"};
+}
+
+const rawContacts = [
+ ["Contact A","Collections Manager","Bright Finserv NBFC","He/Him"],
+ ["Contact B","Regional Collection Head","Suvidha Capital","She/Her"],
+ ["Contact C","Software Engineer","Bright Finserv NBFC",null],
+ ["Contact D","Credit Operations Manager","Rupeeway Fintech",null],
+ ["Contact E","Recovery Manager","Trustline NBFC","He/Him"],
+ ["Contact F","HR Business Partner","Trustline NBFC",null],
+ ["Contact G","Head of Collections","Suvidha Capital",null],
+ ["Contact H","Loan Recovery Officer","Kredence Bank","She/Her"],
+ ["Contact I","Marketing Lead","Kredence Bank",null],
+ ["Contact J","Field Collections Manager","Payzo Finance","He/Him"],
+ ["Contact K","Banking Collections Manager","National Trust Bank",null],
+ ["Contact L","UX Designer","National Trust Bank",null],
+ ["Contact M","NBFC Operations Manager","Suvidha Capital","She/Her"],
+ ["Contact N","Legal Recovery Manager","Rupeeway Fintech",null],
+ ["Contact O","Accounts Receivable Lead","Trustline NBFC",null],
+];
+
+let contacts = rawContacts.map((r,i)=>{
+  const q = isQualified(r[1], r[2]);
+  return {
+    id:i+1, name:r[0], role:r[1], company:r[2], pronouns:r[3],
+    qualified:q.qualified, reason:q.reason,
+    stage: q.qualified ? "Qualified" : "Skipped",
+    template: null, sentMessage:null, sentAt:null,
+    reply:null, existingConv:false,
+  };
+});
+
+/* ---------------- STATE ---------------- */
+let theme = "light";
+let currentPage = "dashboard";
+let batchState = null; // running batch simulation
+let complianceAccepted = false;
+
+const pages = ["dashboard","import","contacts","queue","batch","pipeline","campaigns","templates","settings"];
+const pageLabels = {
+  dashboard:"📊 Dashboard", import:"📥 Import CSV", contacts:"👥 Contacts",
+  queue:"✅ Qualified Queue", batch:"✉️ Batch Review & Send", pipeline:"🗂 Pipeline (Kanban)",
+  campaigns:"🎯 Campaigns", templates:"📝 Templates", settings:"⚙️ Settings"
+};
+
+function toggleTheme(){
+  theme = theme==="light" ? "dark" : "light";
+  document.body.setAttribute("data-theme", theme);
+}
+
+function renderNav(){
+  const nav = document.getElementById("nav");
+  nav.innerHTML = pages.map(p=>
+    `<div class="nav-item ${p===currentPage?'active':''}" onclick="go('${p}')">${pageLabels[p]}</div>`
+  ).join("");
+}
+function go(p){ currentPage=p; render(); }
+
+function stageBadge(stage){
+  const map = {
+    "Qualified":"blue","Verified":"blue","Queued":"blue","Draft Ready":"blue","Approved":"blue",
+    "Outreach Sent":"green","Delivered / Sent Successfully":"green","Replied":"green","Interested":"green","Won":"green",
+    "Follow-up Required":"amber","Skipped":"amber","Not Interested":"red","Failed":"red","Do Not Contact":"red","Lost":"red","Existing Conversation":"amber"
+  };
+  return `<span class="badge ${map[stage]||'blue'}">${stage}</span>`;
+}
+
+/* ---------------- PAGES ---------------- */
+function renderDashboard(){
+  const sentCount = contacts.filter(c=>c.sentMessage).length;
+  const repliedCount = contacts.filter(c=>c.reply).length;
+  const qualifiedCount = contacts.filter(c=>c.qualified).length;
+  const skippedCount = contacts.filter(c=>c.stage==="Skipped").length;
+  const replyRate = sentCount ? ((repliedCount/sentCount)*100).toFixed(1) : "0.0";
+  return `
+  <div class="topbar"><div><h1>Dashboard</h1><div class="sub">Live metrics computed from current demo data</div></div></div>
+  <div class="cards">
+    <div class="card"><div class="k">Total Imported</div><div class="v">${contacts.length}</div></div>
+    <div class="card"><div class="k">Qualified Contacts</div><div class="v">${qualifiedCount}</div></div>
+    <div class="card"><div class="k">Messages Sent</div><div class="v">${sentCount}</div></div>
+    <div class="card"><div class="k">Replies Received</div><div class="v">${repliedCount}</div></div>
+    <div class="card"><div class="k">Reply Rate</div><div class="v">${replyRate}%</div></div>
+    <div class="card"><div class="k">Skipped</div><div class="v">${skippedCount}</div></div>
+    <div class="card"><div class="k">Follow-ups Due Today</div><div class="v">0</div></div>
+    <div class="card"><div class="k">Won Opportunities</div><div class="v">0</div></div>
+  </div>
+  <div class="panel">
+    <h3>Pipeline stage distribution</h3>
+    ${barChart()}
+  </div>
+  <div class="panel">
+    <h3>How this demo works</h3>
+    <div class="small">This is a fully interactive, in-browser preview of the Getlux Outreach CRM using the real sample contacts, qualification keywords, and message templates from the project. All "sending" here is simulated locally — nothing is sent anywhere. Walk through <b>Import → Contacts → Qualified Queue → Batch Review & Send → Pipeline</b> using the sidebar to see the actual workflow. The real Windows app (Electron + SQLite) is being built automatically once you push the source code to GitHub.</div>
+  </div>`;
+}
+
+function barChart(){
+  const counts = {};
+  contacts.forEach(c=>{counts[c.stage]=(counts[c.stage]||0)+1;});
+  const max = Math.max(...Object.values(counts),1);
+  return Object.entries(counts).map(([k,v])=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="width:170px;font-size:12px;color:var(--muted);">${k}</div>
+      <div style="flex:1;background:var(--bg);border-radius:4px;overflow:hidden;height:14px;">
+        <div style="width:${(v/max*100)}%;background:var(--accent);height:100%;"></div>
+      </div>
+      <div style="width:24px;font-size:12px;text-align:right;">${v}</div>
+    </div>`).join("");
+}
+
+function renderImport(){
+  return `
+  <div class="topbar"><div><h1>Import LinkedIn Connections</h1><div class="sub">sample-data/Connections.csv (bundled with the project)</div></div>
+    <button class="btn primary" onclick="doImport()">Import Sample CSV</button>
+  </div>
+  <div class="panel">
+    <h3>Preview (first ${Math.min(contacts.length,20)} rows)</h3>
+    <table><thead><tr><th>Name</th><th>Position</th><th>Company</th><th>Pronouns (if shown)</th></tr></thead>
+    <tbody>${rawContacts.slice(0,20).map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]||'<span class="small">not shown</span>'}</td></tr>`).join("")}</tbody></table>
+  </div>
+  <div class="panel">
+    <h3>Import summary</h3>
+    <div class="small">Imported: ${contacts.length} • Duplicates: 0 • Invalid URLs: 0 • Skipped rows: 0</div>
+  </div>`;
+}
+function doImport(){ go('contacts'); }
+
+function renderContacts(){
+  return `
+  <div class="topbar"><div><h1>Contacts</h1><div class="sub">${contacts.length} total</div></div></div>
+  <div class="panel">
+    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Qualification</th><th>Stage</th></tr></thead>
+    <tbody>${contacts.map(c=>`<tr>
+      <td>${c.name}</td><td>${c.role}</td><td>${c.company}</td>
+      <td class="small">${c.reason}</td>
+      <td>${stageBadge(c.stage)}</td>
+    </tr>`).join("")}</tbody></table>
+  </div>`;
+}
+
+function renderQueue(){
+  const q = contacts.filter(c=>c.qualified && !c.sentMessage);
+  return `
+  <div class="topbar"><div><h1>Qualified Contacts Queue</h1><div class="sub">${q.length} qualified, unsent contacts ready for verification & outreach</div></div>
+    <button class="btn primary" onclick="go('batch')">Open Batch Review →</button>
+  </div>
+  <div class="panel">
+    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Pronouns</th><th>Greeting</th><th>Qualification reason</th></tr></thead>
+    <tbody>${q.map(c=>`<tr>
+      <td>${c.name}</td><td>${c.role}</td><td>${c.company}</td><td>${c.pronouns||'—'}</td>
+      <td>${greeting(c.pronouns)}</td><td class="small">${c.reason}</td>
+    </tr>`).join("")}</tbody></table>
+  </div>`;
+}
+
+function greeting(pronouns){
+  if(pronouns==="He/Him") return "Hi Sir,";
+  if(pronouns==="She/Her") return "Hi Ma'am,";
+  return "Hello,";
+}
+function renderMessage(c, tplId){
+  const tpl = templates.find(t=>t.id===tplId) || templates[0];
+  return tpl.body.replace("{{GREETING}}", greeting(c.pronouns).replace(/,$/,"")).replace(/\{\{COMPANY\}\}/g, c.company);
+}
+
+let selectedBatchTemplate = 1;
+function renderBatch(){
+  const q = contacts.filter(c=>c.qualified && !c.sentMessage).slice(0,10);
+  if(!batchState){
+    return `
+    <div class="topbar"><div><h1>Batch Review & Send</h1><div class="sub">Mock mode — no real LinkedIn messages are ever sent</div></div></div>
+    <div class="compliance-banner">🔒 Mock send only. Every message below requires your review before anything is marked "sent."</div>
+    <div class="panel">
+      <h3>Template variation</h3>
+      <div class="pill-tabs">${templates.map(t=>`<div class="pill ${t.id===selectedBatchTemplate?'active':''}" onclick="setTpl(${t.id})">${t.name}</div>`).join("")}</div>
+      <h3>Draft preview (${q.length} contacts in this batch)</h3>
+      ${q.map(c=>`
+        <div class="panel" style="margin-bottom:10px;">
+          <div class="row"><b>${c.name}</b><span class="small">${c.role} @ ${c.company}</span></div>
+          <div class="draft-box">${renderMessage(c, selectedBatchTemplate)}</div>
+        </div>`).join("")}
+      <button class="btn primary" ${q.length===0?'disabled':''} onclick="confirmSend(${q.length})">Confirm and Send Batch (${q.length})</button>
+    </div>`;
+  }
+  const pct = Math.round((batchState.done/batchState.total)*100);
+  return `
+    <div class="topbar"><div><h1>Batch Review & Send</h1><div class="sub">Sending in progress…</div></div>
+      <button class="btn danger" onclick="stopBatch()">■ Stop Batch</button>
+    </div>
+    <div class="panel">
+      <div class="row"><b>${batchState.currentName||'—'}</b><span class="small">${batchState.currentCompany||''}</span></div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+      <div class="cards">
+        <div class="card"><div class="k">Sent</div><div class="v">${batchState.sent}</div></div>
+        <div class="card"><div class="k">Replied</div><div class="v">${batchState.replied}</div></div>
+        <div class="card"><div class="k">Skipped</div><div class="v">${batchState.skipped}</div></div>
+        <div class="card"><div class="k">Failed</div><div class="v">${batchState.failed}</div></div>
+        <div class="card"><div class="k">Remaining</div><div class="v">${batchState.total-batchState.done}</div></div>
+      </div>
+      <div class="small">${batchState.log.slice(-6).map(l=>`<div>${l}</div>`).join("")}</div>
+    </div>`;
+}
+function setTpl(id){ selectedBatchTemplate=id; render(); }
+
+function confirmSend(n){
+  if(!confirm(`Confirm and send this batch of ${n} messages? This is a simulated send — nothing leaves this browser.`)) return;
+  const q = contacts.filter(c=>c.qualified && !c.sentMessage).slice(0,10);
+  batchState = {total:q.length, done:0, sent:0, replied:0, skipped:0, failed:0, queue:q.slice(), log:[], stopped:false};
+  render();
+  runBatchStep();
+}
+function stopBatch(){
+  if(batchState){ batchState.stopped=true; batchState.log.push("User stopped the batch."); }
+  render();
+}
+function runBatchStep(){
+  if(!batchState || batchState.stopped || batchState.queue.length===0){
+    if(batchState) batchState.log.push("Batch complete.");
+    setTimeout(()=>{ if(!batchState || batchState.queue.length===0) { render(); } }, 300);
+    return;
+  }
+  const c = batchState.queue.shift();
+  batchState.currentName = c.name; batchState.currentCompany = c.company;
+  render();
+  setTimeout(()=>{
+    if(!batchState || batchState.stopped) return;
+    c.sentMessage = renderMessage(c, selectedBatchTemplate);
+    c.sentAt = new Date().toISOString();
+    c.stage = "Outreach Sent";
+    const willReply = Math.random() < 0.35;
+    if(willReply){
+      c.reply = "Interested — please share your company profile.";
+      c.stage = "Replied";
+      batchState.replied++;
+    }
+    batchState.sent++;
+    batchState.done++;
+    batchState.log.push(`Sent to ${c.name} (${c.company})`);
+    render();
+    setTimeout(runBatchStep, 500 + Math.random()*400);
+  }, 500 + Math.random()*500);
+}
+
+function renderPipeline(){
+  const stages = ["Qualified","Outreach Sent","Replied","Interested","Follow-up Required","Won","Skipped"];
+  return `
+  <div class="topbar"><div><h1>Pipeline — Kanban</h1><div class="sub">Live view of every contact's current CRM stage</div></div></div>
+  <div class="kanban">
+    ${stages.map(s=>`
+      <div class="kcol"><h4>${s} (${contacts.filter(c=>c.stage===s).length})</h4>
+        ${contacts.filter(c=>c.stage===s).map(c=>`<div class="kcard"><b>${c.name}</b>${c.company}</div>`).join("") || '<div class="small">—</div>'}
+      </div>`).join("")}
+  </div>`;
+}
+
+function renderCampaigns(){
+  const names = ["August Collections Outreach","NBFC Decision Makers","Banking Collections Leads","Recovery Managers Campaign","Kerala Field Collections Leads","Tamil Nadu Collections Leads","Karnataka Collections Leads"];
+  return `
+  <div class="topbar"><div><h1>Campaigns</h1></div></div>
+  <div class="panel"><table><thead><tr><th>Campaign</th><th>Sent</th><th>Replies</th><th>Reply rate</th></tr></thead>
+  <tbody>${names.map((n,i)=>`<tr><td>${n}</td><td>${i===0?contacts.filter(c=>c.sentMessage).length:0}</td><td>${i===0?contacts.filter(c=>c.reply).length:0}</td><td>${i===0 && contacts.filter(c=>c.sentMessage).length ? ((contacts.filter(c=>c.reply).length/contacts.filter(c=>c.sentMessage).length)*100).toFixed(0)+'%':'—'}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function renderTemplates(){
+  return `
+  <div class="topbar"><div><h1>Templates</h1><div class="sub">${templates.length} approved message variations</div></div></div>
+  ${templates.map(t=>`<div class="panel"><h3>${t.name}</h3><div class="draft-box">${t.body.replace("{{GREETING}}","Hello,").replace(/\{\{COMPANY\}\}/g,"[Company]")}</div></div>`).join("")}`;
+}
+
+function renderSettings(){
+  return `
+  <div class="topbar"><div><h1>Settings</h1></div></div>
+  <div class="panel">
+    <h3>Compliance</h3>
+    <div class="small">"Use this tool only for relevant, legitimate, and policy-compliant business outreach. You are responsible for message content, consent, and compliance with LinkedIn policies and applicable laws."</div>
+  </div>
+  <div class="panel">
+    <h3>Sender details</h3>
+    <div class="small">Sabari — Getlux · +91 6363958868 · Business@getlux.co.in · www.getlux.co.in</div>
+  </div>
+  <div class="panel">
+    <h3>Batch defaults</h3>
+    <div class="small">Default batch size: 10 · Max/day: 1000 · Schedule: 9:00 AM Asia/Kolkata (paused by default)</div>
+  </div>`;
+}
+
+function render(){
+  renderNav();
+  const main = document.getElementById("main");
+  const renderers = {dashboard:renderDashboard, import:renderImport, contacts:renderContacts, queue:renderQueue, batch:renderBatch, pipeline:renderPipeline, campaigns:renderCampaigns, templates:renderTemplates, settings:renderSettings};
+  main.innerHTML = renderers[currentPage]();
+  renderModal();
+}
+
+function renderModal(){
+  const root = document.getElementById("modalRoot");
+  if(complianceAccepted){ root.innerHTML=""; return; }
+  root.innerHTML = `
+  <div class="modal-bg"><div class="modal">
+    <h2>Before you begin</h2>
+    <p style="font-size:13.5px;line-height:1.5;">Use this tool only for relevant, legitimate, and policy-compliant business outreach. You are responsible for message content, consent, and compliance with LinkedIn policies and applicable laws.</p>
+    <p class="small">This is a demo build. All sending shown here is simulated in your browser only — no real LinkedIn messages are ever sent from this demo.</p>
+    <button class="btn primary" onclick="acceptCompliance()">I Understand — Continue</button>
+  </div></div>`;
+}
+function acceptCompliance(){ complianceAccepted = true; render(); }
+
+render();
+</script>
+</body>
+</html>
