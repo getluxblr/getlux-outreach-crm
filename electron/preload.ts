@@ -15,6 +15,7 @@ const api = {
     update: (id: string, fields: any) => invoke('contacts:update', id, fields),
     delete: (id: string) => invoke('contacts:delete', id),
     countByStage: () => invoke('contacts:countByStage'),
+    createManual: (input: any) => invoke('contacts:createManual', input),
   },
   companies: {
     list: (search?: string) => invoke('companies:list', search),
@@ -103,6 +104,12 @@ const api = {
   exportData: {
     contactsCsv: () => invoke('export:contactsCsv'),
     messagesCsv: () => invoke('export:messagesCsv'),
+  },
+  shell: {
+    // Opens a URL in the user's normal default browser (a plain new tab),
+    // exactly like clicking a hyperlink. Never used to log into LinkedIn,
+    // click anything on linkedin.com, or automate any site.
+    openExternal: (url: string) => invoke('shell:openExternal', url),
   },
 };
 
