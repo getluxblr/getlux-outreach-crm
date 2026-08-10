@@ -627,14 +627,14 @@ async function messageContact(id){
     render();
     return;
   }
-  // Open the tab synchronously, in the same tick as the click, so mobile
-  // browsers keep this tied to the user's tap instead of treating it as a
-  // blocked popup. That's also what lets the OS hand off a linkedin.com /
-  // lnkd.in link to the LinkedIn app itself (via its universal link) rather
-  // than opening it in the in-app browser — if window.open() ran after an
-  // `await`, most mobile browsers would silently block it or fall back to a
-  // plain browser tab instead.
-  const win = window.open('', LINKEDIN_TAB_TARGET, 'noopener');
+  // Navigate directly and synchronously, in the same tick as the click —
+  // this ties it to the user's tap (needed on mobile so the OS can hand a
+  // linkedin.com / lnkd.in link off to the LinkedIn app instead of the
+  // browser blocking it), and because every call uses the same named
+  // target, repeat clicks reuse that one tab instead of opening a new one
+  // each time. No intermediate blank window — that pattern was leaving a
+  // stray about:blank tab open instead of reliably navigating.
+  window.open(openableUrl, LINKEDIN_TAB_TARGET, 'noopener');
   messageBusyId = id;
   render();
   try{
@@ -646,11 +646,9 @@ async function messageContact(id){
     c.message = finalText;
     c.messageStatus = "copied";
     c.stage = "Draft Copied — Awaiting Manual Send";
-    if(win){ win.location = openableUrl; } else { window.open(openableUrl, LINKEDIN_TAB_TARGET, 'noopener'); }
     c.messageHintShown = true;
   }catch(e){
     c.messageError = MESSAGE_ERROR_LINKEDIN;
-    if(win) win.close();
   }
   messageBusyId = null;
   saveContacts();
@@ -934,19 +932,17 @@ async function connectOnLinkedIn(id){
     render();
     return;
   }
-  // Same fix as messageContact(): open synchronously, in direct response to
-  // the click, so the tab stays tied to the user's tap and the OS can hand
-  // linkedin.com / lnkd.in links off to the LinkedIn app itself instead of
-  // the browser blocking the popup or falling back to a plain browser tab.
-  const win = window.open('', LINKEDIN_TAB_TARGET, 'noopener');
+  // Same fix as messageContact(): navigate directly and synchronously, in
+  // the same tick as the click, using the shared named target so repeat
+  // clicks reuse one tab instead of opening a new one — no intermediate
+  // blank window, which was the cause of a stray about:blank tab.
+  window.open(openableUrl, LINKEDIN_TAB_TARGET, 'noopener');
   try{
     await copyDraftToClipboard(id);
-    if(win){ win.location = openableUrl; } else { window.open(openableUrl, LINKEDIN_TAB_TARGET, 'noopener'); }
     c.connectHintShown = true;
     c.connectError = null;
   }catch(e){
     c.connectError = CONNECT_ERROR_MESSAGE;
-    if(win) win.close();
   }
   saveContacts();
   render();
