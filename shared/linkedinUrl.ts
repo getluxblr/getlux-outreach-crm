@@ -53,3 +53,41 @@ export function normalizeLinkedInUrl(url: string): string {
   // and hash fragments — they carry no identity information for a profile.
   return `${host}${pathname}`;
 }
+
+/**
+ * toOpenableLinkedInUrl
+ *
+ * Validates and normalizes a user-typed or CSV-sourced LinkedIn profile URL
+ * into a well-formed, absolute, directly-openable URL (protocol included).
+ * Unlike normalizeLinkedInUrl() above (which strips the protocol for
+ * de-dup comparison), this is meant to produce a value that can be handed
+ * straight to shell.openExternal()/window.open() without further work.
+ *
+ * Returns null if the input is empty, not parseable as a URL even after
+ * prepending "https://", or doesn't point at a linkedin.com host.
+ *
+ * Pure function — no network/IO — safe to unit test directly.
+ */
+export function toOpenableLinkedInUrl(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+
+  let candidate = raw.trim();
+  if (!candidate) return null;
+
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return null;
+  }
+
+  if (!parsed.hostname.toLowerCase().includes('linkedin.com')) {
+    return null;
+  }
+
+  return parsed.toString();
+}
