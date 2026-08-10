@@ -464,12 +464,15 @@ export default function Contacts(): JSX.Element {
                     />
                   </td>
                   <td>
-                    {c.crm_pipeline_stage === 'Qualified' && (
+                    {/* Verification is only meaningful for prospects we haven't
+                        connected with yet — someone already Connected on
+                        LinkedIn has no need to be routed through it. */}
+                    {c.contact_status !== 'Connected' && c.crm_pipeline_stage === 'Qualified' && (
                       <button className="btn btn-primary" onClick={() => sendToVerification(c.id)}>
                         Send to Verification
                       </button>
                     )}
-                    {c.crm_pipeline_stage === 'Verification Pending' && (
+                    {c.contact_status !== 'Connected' && c.crm_pipeline_stage === 'Verification Pending' && (
                       <button
                         className="btn btn-primary"
                         disabled={verifyBusyId === c.id}
