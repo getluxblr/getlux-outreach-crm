@@ -25,6 +25,35 @@ export default function Contacts(): JSX.Element {
   const [addError, setAddError] = useState<string | null>(null);
   const [addBusy, setAddBusy] = useState(false);
 
+  // Edit modal — same shape/pattern as Add Connection, pre-filled from the
+  // contact being edited. This is what lets someone fix a bad/missing
+  // LinkedIn URL (e.g. entered by hand) after the fact.
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_ADD_FORM);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+
+  // Per-row action buttons that used to be the whole of the Qualified Queue
+  // and Verification Queue screens. Same API calls, same busy-state
+  // handling as those pages had — this never talks to linkedin.com; "Run
+  // Mock Verification" is the same pre-existing mock-only simulation.
+  const [verifyBusyId, setVerifyBusyId] = useState<string | null>(null);
+
+  const sendToVerification = async (id: string) => {
+    await api.contacts.update(id, { crm_pipeline_stage: 'Verification Pending' });
+    load();
+  };
+
+  const runMockVerification = async (id: string) => {
+    setVerifyBusyId(id);
+    try {
+      await api.verification.verifyContact(id);
+    } finally {
+      setVerifyBusyId(null);
+      load();
+    }
+  };
+
   const load = () => {
     setLoading(true);
     api.contacts
@@ -91,6 +120,62 @@ export default function Contacts(): JSX.Element {
       setAddError(e.message || 'Could not add this connection.');
     } finally {
       setAddBusy(false);
+    }
+  };
+
+  const openEditConnection = (c: any) => {
+    setEditForm({
+      fullName: c.full_name || '',
+      company: c.csv_company || '',
+      position: c.csv_position || '',
+      linkedinUrl: c.linkedin_url || '',
+      pronouns: c.pronouns_found || '',
+      connectionStatus: c.contact_status === 'Not Connected' ? 'Not Connected' : 'Connected',
+    });
+    setEditError(null);
+    setEditingContactId(c.id);
+  };
+
+  const closeEditConnection = () => {
+    setEditingContactId(null);
+    setEditError(null);
+  };
+
+  // Updates the existing contact record — same validation/normalization of
+  // the LinkedIn URL as Add Connection (same error message on invalid
+  // input), writing to the same columns updateContact() already allows.
+  const submitEditConnection = async () => {
+    if (!editingContactId) return;
+    setEditError(null);
+    if (!editForm.fullName.trim()) {
+      setEditError('Name is required.');
+      return;
+    }
+    if (!editForm.linkedinUrl.trim()) {
+      setEditError('LinkedIn Profile URL is required.');
+      return;
+    }
+    const normalizedLinkedinUrl = toOpenableLinkedInUrl(editForm.linkedinUrl);
+    if (!normalizedLinkedinUrl) {
+      setEditError(LINKEDIN_URL_ERROR);
+      return;
+    }
+    setEditBusy(true);
+    try {
+      await api.contacts.update(editingContactId, {
+        full_name: editForm.fullName.trim(),
+        linkedin_url: normalizedLinkedinUrl,
+        csv_company: editForm.company.trim() || null,
+        csv_position: editForm.position.trim() || null,
+        pronouns_found: editForm.pronouns || null,
+        contact_status: editForm.connectionStatus,
+      });
+      setEditingContactId(null);
+      load();
+    } catch (e: any) {
+      setEditError(e.message || 'Could not save this contact.');
+    } finally {
+      setEditBusy(false);
     }
   };
 
@@ -196,6 +281,86 @@ export default function Contacts(): JSX.Element {
         </div>
       )}
 
+      {editingContactId && (
+        <div className="panel">
+          <h2>Edit Contact</h2>
+          <p className="page-subtitle">
+            Fix or update this contact's details — for example, correct a bad or missing LinkedIn URL.
+          </p>
+          <div className="card-grid">
+            <div>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Name</label>
+              <input
+                type="text"
+                value={editForm.fullName}
+                onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Company</label>
+              <input
+                type="text"
+                value={editForm.company}
+                onChange={(e) => setEditForm((f) => ({ ...f, company: e.target.value }))}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Position / Title</label>
+              <input
+                type="text"
+                value={editForm.position}
+                onChange={(e) => setEditForm((f) => ({ ...f, position: e.target.value }))}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>LinkedIn Profile URL</label>
+              <input
+                type="text"
+                placeholder="https://www.linkedin.com/in/…"
+                value={editForm.linkedinUrl}
+                onChange={(e) => setEditForm((f) => ({ ...f, linkedinUrl: e.target.value }))}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
+                Pronoun (used only for the explicit greeting rule — never inferred from name)
+              </label>
+              <select
+                value={editForm.pronouns}
+                onChange={(e) => setEditForm((f) => ({ ...f, pronouns: e.target.value }))}
+                style={{ width: '100%' }}
+              >
+                <option value="">Not specified</option>
+                <option value="He/Him">He/Him</option>
+                <option value="She/Her">She/Her</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Connection status</label>
+              <select
+                value={editForm.connectionStatus}
+                onChange={(e) => setEditForm((f) => ({ ...f, connectionStatus: e.target.value as 'Connected' | 'Not Connected' }))}
+                style={{ width: '100%' }}
+              >
+                <option value="Connected">Connected (already connected on LinkedIn)</option>
+                <option value="Not Connected">Not Connected (logging a prospect I haven't imported)</option>
+              </select>
+            </div>
+          </div>
+          {editError && <p style={{ color: 'var(--danger)' }}>{editError}</p>}
+          <div style={{ marginTop: 10 }}>
+            <button className="btn btn-primary" disabled={editBusy} onClick={submitEditConnection}>
+              {editBusy ? 'Saving…' : 'Save Changes'}
+            </button>{' '}
+            <button className="btn" onClick={closeEditConnection}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       <div className="panel">
         {loading && <div className="empty-state">Loading…</div>}
         {!loading && contacts.length === 0 && <div className="empty-state">No contacts found. Try Import CSV first.</div>}
@@ -210,6 +375,8 @@ export default function Contacts(): JSX.Element {
                 <th>Stage</th>
                 <th>Qualification</th>
                 <th>DNC</th>
+                <th>Action</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -227,6 +394,25 @@ export default function Contacts(): JSX.Element {
                       checked={!!c.do_not_contact_flag}
                       onChange={(e) => setDoNotContact(c.id, e.target.checked)}
                     />
+                  </td>
+                  <td>
+                    {c.crm_pipeline_stage === 'Qualified' && (
+                      <button className="btn btn-primary" onClick={() => sendToVerification(c.id)}>
+                        Send to Verification
+                      </button>
+                    )}
+                    {c.crm_pipeline_stage === 'Verification Pending' && (
+                      <button
+                        className="btn btn-primary"
+                        disabled={verifyBusyId === c.id}
+                        onClick={() => runMockVerification(c.id)}
+                      >
+                        {verifyBusyId === c.id ? 'Verifying…' : 'Run Mock Verification'}
+                      </button>
+                    )}
+                  </td>
+                  <td>
+                    <button className="btn" onClick={() => openEditConnection(c)}>Edit</button>
                   </td>
                 </tr>
               ))}
