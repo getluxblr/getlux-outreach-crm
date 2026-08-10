@@ -8,8 +8,6 @@ const NAV_ITEMS: { to: string; label: string }[] = [
   { to: '/import', label: 'Import CSV' },
   { to: '/contacts', label: 'Contacts' },
   { to: '/companies', label: 'Companies' },
-  { to: '/qualified-queue', label: 'Qualified Queue' },
-  { to: '/verification-queue', label: 'Verification Queue' },
   { to: '/batch-send', label: 'Batch Review & Send' },
   { to: '/campaigns', label: 'Campaigns' },
   { to: '/messages', label: 'Messages' },
