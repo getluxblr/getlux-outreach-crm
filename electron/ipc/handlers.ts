@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
 import fs from 'node:fs';
 import Papa from 'papaparse';
 import { getDb } from '../db';
@@ -33,6 +33,34 @@ function handle(channel: string, fn: (event: Electron.IpcMainInvokeEvent, ...arg
       return { ok: false, error: err?.message || String(err) };
     }
   });
+}
+
+// A single reusable browser window for LinkedIn profiles opened from the
+// app — clicking "Message" / "Connect on LinkedIn" repeatedly now navigates
+// this one window to the next profile instead of piling up a new OS browser
+// tab every time. This is still just a plain Chromium window showing
+// whatever URL we pass it (always a validated linkedin.com/lnkd.in profile
+// URL) — nothing is auto-filled, auto-clicked, or scripted on the page; the
+// human pastes the message and clicks Connect/Send themselves, exactly as
+// before.
+let linkedInWindow: BrowserWindow | null = null;
+function openInReusableWindow(url: string): void {
+  if (linkedInWindow && !linkedInWindow.isDestroyed()) {
+    linkedInWindow.loadURL(url);
+    if (linkedInWindow.isMinimized()) linkedInWindow.restore();
+    linkedInWindow.focus();
+    return;
+  }
+  linkedInWindow = new BrowserWindow({
+    width: 1180,
+    height: 820,
+    title: 'LinkedIn',
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+  });
+  linkedInWindow.on('closed', () => {
+    linkedInWindow = null;
+  });
+  linkedInWindow.loadURL(url);
 }
 
 export function registerIpcHandlers(getWin: () => BrowserWindow | null): void {
@@ -126,14 +154,16 @@ export function registerIpcHandlers(getWin: () => BrowserWindow | null): void {
     return { filePath, filename: filePath.split(/[\\/]/).pop(), content };
   });
 
-  // Shell — opens a URL in the user's normal default browser (a plain new
-  // tab), exactly like clicking a hyperlink. Never used to log into
-  // LinkedIn, click anything on linkedin.com, or automate any site.
+  // Shell — opens a URL in one reusable in-app browser window (see
+  // openInReusableWindow above), instead of a new OS browser tab every
+  // time. Never used to log into LinkedIn, click anything on linkedin.com,
+  // or automate any site — it only navigates to the URL, exactly like
+  // clicking a hyperlink; the human does everything else by hand.
   handle('shell:openExternal', async (_e, url: string) => {
     if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
       throw new Error('Only http(s) URLs can be opened.');
     }
-    await shell.openExternal(url);
+    openInReusableWindow(url);
     return { opened: true };
   });
 
