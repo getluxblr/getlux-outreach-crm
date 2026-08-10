@@ -574,14 +574,65 @@ function renderContacts(){
 // Nothing here ever talks to linkedin.com; "Run Mock Verification" is a
 // pure in-browser simulation, same as the mock-mode Electron app.
 function contactStageAction(c){
+  let html = '';
   if(c.stage === "Qualified"){
-    return `<button class="btn primary" onclick="sendToVerification(${c.id})">Send to Verification</button>`;
+    html += `<button class="btn primary" onclick="sendToVerification(${c.id})">Send to Verification</button> `;
   }
   if(c.stage === "Verification Pending"){
     const busy = verifyBusyId === c.id;
-    return `<button class="btn primary" ${busy?'disabled':''} onclick="runMockVerification(${c.id})">${busy?'Verifying…':'Run Mock Verification'}</button>`;
+    html += `<button class="btn primary" ${busy?'disabled':''} onclick="runMockVerification(${c.id})">${busy?'Verifying…':'Run Mock Verification'}</button> `;
   }
-  return '<span class="small">—</span>';
+  const msgBusy = messageBusyId === c.id;
+  html += `<button class="btn" ${msgBusy?'disabled':''} onclick="messageContact(${c.id})" title="Copies an auto-drafted message and opens this contact's LinkedIn profile — you paste and click Send/Connect yourself">${msgBusy?'Opening…':'Message'}</button>`;
+  if(c.messageHintShown){
+    html += `<div class="small" style="margin-top:4px;">Message copied — paste it on LinkedIn, then click Send/Connect there yourself.</div>`;
+  }
+  if(c.messageError){
+    html += `<div class="small" style="color:#dc2626;margin-top:4px;">${escapeHtml(c.messageError)}</div>`;
+  }
+  return html || '<span class="small">—</span>';
+}
+
+// "Message" action — auto-drafts the correct template (Invitation Note if
+// not yet connected, Connection Message if already connected), copies it to
+// the clipboard, and opens the contact's LinkedIn profile in a new tab. This
+// NEVER logs into LinkedIn, never scrapes it, and never clicks anything on
+// linkedin.com itself — the human pastes the message and clicks Send/Connect
+// there themselves. Reuses the exact same draftMessageFor()/copy logic as
+// Batch Review & Send, just triggerable directly from this table too.
+let messageBusyId = null;
+const MESSAGE_ERROR_LINKEDIN = "Couldn't open LinkedIn — this contact's profile URL looks invalid. Click Edit to fix it.";
+async function messageContact(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  c.messageError = null;
+  c.messageHintShown = false;
+  const openableUrl = toOpenableLinkedInUrl(c.linkedinUrl || '');
+  if(!openableUrl){
+    c.messageError = MESSAGE_ERROR_LINKEDIN;
+    saveContacts();
+    render();
+    return;
+  }
+  messageBusyId = id;
+  render();
+  try{
+    const { text } = draftMessageFor(c);
+    const finalText = c.message || text;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(finalText);
+    }
+    c.message = finalText;
+    c.messageStatus = "copied";
+    c.stage = "Draft Copied — Awaiting Manual Send";
+    window.open(openableUrl, '_blank', 'noopener');
+    c.messageHintShown = true;
+  }catch(e){
+    c.messageError = MESSAGE_ERROR_LINKEDIN;
+  }
+  messageBusyId = null;
+  saveContacts();
+  render();
 }
 
 function sendToVerification(id){
