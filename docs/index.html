@@ -619,6 +619,14 @@ async function messageContact(id){
     render();
     return;
   }
+  // Open the tab synchronously, in the same tick as the click, so mobile
+  // browsers keep this tied to the user's tap instead of treating it as a
+  // blocked popup. That's also what lets the OS hand off a linkedin.com /
+  // lnkd.in link to the LinkedIn app itself (via its universal link) rather
+  // than opening it in the in-app browser — if window.open() ran after an
+  // `await`, most mobile browsers would silently block it or fall back to a
+  // plain browser tab instead.
+  const win = window.open('', '_blank', 'noopener');
   messageBusyId = id;
   render();
   try{
@@ -630,10 +638,11 @@ async function messageContact(id){
     c.message = finalText;
     c.messageStatus = "copied";
     c.stage = "Draft Copied — Awaiting Manual Send";
-    window.open(openableUrl, '_blank', 'noopener');
+    if(win){ win.location = openableUrl; } else { window.open(openableUrl, '_blank', 'noopener'); }
     c.messageHintShown = true;
   }catch(e){
     c.messageError = MESSAGE_ERROR_LINKEDIN;
+    if(win) win.close();
   }
   messageBusyId = null;
   saveContacts();
@@ -908,22 +917,28 @@ const CONNECT_ERROR_MESSAGE = "Couldn't open LinkedIn — this contact's profile
 async function connectOnLinkedIn(id){
   const c = contacts.find(x=>x.id===id);
   if(!c || !c.linkedinUrl) return;
+  // Defensive re-normalization: contacts created before this fix may
+  // still have a protocol-less or otherwise malformed URL stored.
+  const openableUrl = toOpenableLinkedInUrl(c.linkedinUrl);
+  if(!openableUrl){
+    c.connectError = CONNECT_ERROR_MESSAGE;
+    saveContacts();
+    render();
+    return;
+  }
+  // Same fix as messageContact(): open synchronously, in direct response to
+  // the click, so the tab stays tied to the user's tap and the OS can hand
+  // linkedin.com / lnkd.in links off to the LinkedIn app itself instead of
+  // the browser blocking the popup or falling back to a plain browser tab.
+  const win = window.open('', '_blank', 'noopener');
   try{
-    // Defensive re-normalization: contacts created before this fix may
-    // still have a protocol-less or otherwise malformed URL stored.
-    const openableUrl = toOpenableLinkedInUrl(c.linkedinUrl);
-    if(!openableUrl){
-      c.connectError = CONNECT_ERROR_MESSAGE;
-      saveContacts();
-      render();
-      return;
-    }
     await copyDraftToClipboard(id);
-    window.open(openableUrl, '_blank', 'noopener');
+    if(win){ win.location = openableUrl; } else { window.open(openableUrl, '_blank', 'noopener'); }
     c.connectHintShown = true;
     c.connectError = null;
   }catch(e){
     c.connectError = CONNECT_ERROR_MESSAGE;
+    if(win) win.close();
   }
   saveContacts();
   render();
