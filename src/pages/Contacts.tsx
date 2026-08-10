@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { PIPELINE_STAGES } from '../../shared/types';
 import { toOpenableLinkedInUrl } from '../../shared/linkedinUrl';
+import { selectGreeting } from '../../shared/greeting';
+import { renderTemplate } from '../../shared/templates';
 import StageBadge from '../components/StageBadge';
 
 const LINKEDIN_URL_ERROR = 'Enter a valid LinkedIn profile URL, e.g. https://www.linkedin.com/in/your-handle';
@@ -38,6 +40,72 @@ export default function Contacts(): JSX.Element {
   // handling as those pages had — this never talks to linkedin.com; "Run
   // Mock Verification" is the same pre-existing mock-only simulation.
   const [verifyBusyId, setVerifyBusyId] = useState<string | null>(null);
+
+  // "Message" action — auto-drafts the correct template (Invitation Note if
+  // not yet connected, Connection Message if already connected), copies it
+  // to the clipboard, and opens the contact's LinkedIn profile in a new
+  // browser tab. This NEVER logs into LinkedIn, never scrapes it, and never
+  // clicks anything on linkedin.com itself — the human pastes the message
+  // and clicks Send/Connect there themselves. Same compliant pattern as the
+  // "Connect on LinkedIn" button on Batch Review & Send, just available
+  // directly from this table too.
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [messageBusyId, setMessageBusyId] = useState<string | null>(null);
+  const [messageErrors, setMessageErrors] = useState<Record<string, string>>({});
+  const [messageHints, setMessageHints] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    api.templates.list().then(setTemplates);
+  }, []);
+
+  const MESSAGE_ERROR_LINKEDIN = "Couldn't open LinkedIn — this contact's profile URL looks invalid. Click Edit to fix it.";
+  const MESSAGE_ERROR_TEMPLATE = 'No message template found. Add one on the Templates page first.';
+
+  const sendMessage = async (c: any) => {
+    setMessageErrors((prev) => ({ ...prev, [c.id]: '' }));
+    setMessageHints((prev) => ({ ...prev, [c.id]: false }));
+
+    const openableUrl = toOpenableLinkedInUrl(c.linkedin_url || '');
+    if (!openableUrl) {
+      setMessageErrors((prev) => ({ ...prev, [c.id]: MESSAGE_ERROR_LINKEDIN }));
+      return;
+    }
+
+    const templateType = c.contact_status === 'Connected' ? 'Connection Message' : 'Invitation Note';
+    const candidates = templates.filter((t) => (t.type || 'Connection Message') === templateType);
+    const template = candidates[0] || templates[0];
+    if (!template) {
+      setMessageErrors((prev) => ({ ...prev, [c.id]: MESSAGE_ERROR_TEMPLATE }));
+      return;
+    }
+
+    setMessageBusyId(c.id);
+    try {
+      const greeting = selectGreeting(c.pronouns_found);
+      const company = c.verified_current_company || c.csv_company || 'your organization';
+      const message = renderTemplate(template, { greeting, company });
+
+      await navigator.clipboard.writeText(message);
+      const messageDbId: string = await api.messages.create({
+        contact_id: c.id,
+        template_id: template.id,
+        greeting_used: greeting,
+        company_used: company,
+        final_message: message,
+        status: 'Draft Copied',
+      });
+      await api.contacts.update(c.id, { crm_pipeline_stage: 'Draft Copied — Awaiting Manual Send' });
+      await api.shell.openExternal(openableUrl);
+      void messageDbId;
+
+      setMessageHints((prev) => ({ ...prev, [c.id]: true }));
+      load();
+    } catch {
+      setMessageErrors((prev) => ({ ...prev, [c.id]: MESSAGE_ERROR_LINKEDIN }));
+    } finally {
+      setMessageBusyId(null);
+    }
+  };
 
   const sendToVerification = async (id: string) => {
     await api.contacts.update(id, { crm_pipeline_stage: 'Verification Pending' });
@@ -409,6 +477,22 @@ export default function Contacts(): JSX.Element {
                       >
                         {verifyBusyId === c.id ? 'Verifying…' : 'Run Mock Verification'}
                       </button>
+                    )}{' '}
+                    <button
+                      className="btn"
+                      disabled={messageBusyId === c.id}
+                      onClick={() => sendMessage(c)}
+                      title="Copies an auto-drafted message and opens this contact's LinkedIn profile — you paste and click Send/Connect yourself"
+                    >
+                      {messageBusyId === c.id ? 'Opening…' : 'Message'}
+                    </button>
+                    {messageHints[c.id] && (
+                      <div style={{ fontSize: 12, marginTop: 4 }}>
+                        Message copied — paste it on LinkedIn, then click Send/Connect there yourself.
+                      </div>
+                    )}
+                    {messageErrors[c.id] && (
+                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{messageErrors[c.id]}</div>
                     )}
                   </td>
                   <td>
