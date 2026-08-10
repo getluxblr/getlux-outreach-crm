@@ -102,6 +102,11 @@ const LS_LINKEDIN_DATA = "getlux_demo_linkedin_data_v1";
 const LS_TEMPLATES = "getlux_demo_templates_v1";
 const LS_CONTACTS = "getlux_demo_contacts_v1";
 
+// A single named window target reused for every LinkedIn profile we open —
+// clicking "profile", "Message", or "Connect on LinkedIn" for different
+// contacts navigates this one tab instead of piling up a new tab each time.
+const LINKEDIN_TAB_TARGET = "getluxLinkedInTab";
+
 function lsGet(key, fallback){
   try{
     const raw = localStorage.getItem(key);
@@ -563,7 +568,7 @@ function renderContacts(){
     <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>LinkedIn</th><th>Connection status</th><th>Qualification</th><th>Stage</th><th>Action</th><th></th></tr></thead>
     <tbody>${contacts.map(c=>`<tr>
       <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.role)}</td><td>${escapeHtml(c.company)}</td>
-      <td>${c.linkedinUrl ? `<a href="${escapeHtml(c.linkedinUrl)}" target="_blank" rel="noopener">profile</a>` : '<span class="small">—</span>'}</td>
+      <td>${c.linkedinUrl ? `<a href="${escapeHtml(c.linkedinUrl)}" target="${LINKEDIN_TAB_TARGET}" rel="noopener">profile</a>` : '<span class="small">—</span>'}</td>
       <td>${connectionBadge(c.connectionStatus)}</td>
       <td class="small">${escapeHtml(c.reason)}</td>
       <td>${stageBadge(c.stage)}</td>
@@ -580,10 +585,13 @@ function renderContacts(){
 // pure in-browser simulation, same as the mock-mode Electron app.
 function contactStageAction(c){
   let html = '';
-  if(c.stage === "Qualified"){
+  // Verification is only meaningful for prospects not yet connected on
+  // LinkedIn — someone already Connected has no need to go through it.
+  const notConnected = c.connectionStatus !== "Connected";
+  if(notConnected && c.stage === "Qualified"){
     html += `<button class="btn primary" onclick="sendToVerification(${c.id})">Send to Verification</button> `;
   }
-  if(c.stage === "Verification Pending"){
+  if(notConnected && c.stage === "Verification Pending"){
     const busy = verifyBusyId === c.id;
     html += `<button class="btn primary" ${busy?'disabled':''} onclick="runMockVerification(${c.id})">${busy?'Verifying…':'Run Mock Verification'}</button> `;
   }
@@ -626,7 +634,7 @@ async function messageContact(id){
   // than opening it in the in-app browser — if window.open() ran after an
   // `await`, most mobile browsers would silently block it or fall back to a
   // plain browser tab instead.
-  const win = window.open('', '_blank', 'noopener');
+  const win = window.open('', LINKEDIN_TAB_TARGET, 'noopener');
   messageBusyId = id;
   render();
   try{
@@ -638,7 +646,7 @@ async function messageContact(id){
     c.message = finalText;
     c.messageStatus = "copied";
     c.stage = "Draft Copied — Awaiting Manual Send";
-    if(win){ win.location = openableUrl; } else { window.open(openableUrl, '_blank', 'noopener'); }
+    if(win){ win.location = openableUrl; } else { window.open(openableUrl, LINKEDIN_TAB_TARGET, 'noopener'); }
     c.messageHintShown = true;
   }catch(e){
     c.messageError = MESSAGE_ERROR_LINKEDIN;
@@ -930,10 +938,10 @@ async function connectOnLinkedIn(id){
   // the click, so the tab stays tied to the user's tap and the OS can hand
   // linkedin.com / lnkd.in links off to the LinkedIn app itself instead of
   // the browser blocking the popup or falling back to a plain browser tab.
-  const win = window.open('', '_blank', 'noopener');
+  const win = window.open('', LINKEDIN_TAB_TARGET, 'noopener');
   try{
     await copyDraftToClipboard(id);
-    if(win){ win.location = openableUrl; } else { window.open(openableUrl, '_blank', 'noopener'); }
+    if(win){ win.location = openableUrl; } else { window.open(openableUrl, LINKEDIN_TAB_TARGET, 'noopener'); }
     c.connectHintShown = true;
     c.connectError = null;
   }catch(e){
