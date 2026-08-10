@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { selectGreeting } from '../../shared/greeting';
 import { renderTemplate } from '../../shared/templates';
+import { toOpenableLinkedInUrl } from '../../shared/linkedinUrl';
 import type { TemplateType } from '../../shared/types';
 
 const BATCH_SIZES = [1, 5, 10, 25, 50, 75, 100, 125, 150];
@@ -21,6 +22,7 @@ interface Draft {
   messageDbId: string | null;
   status: 'pending' | 'copied' | 'sent';
   connectHintShown: boolean;
+  connectError: string | null;
 }
 
 function templateTypeFor(contact: any): TemplateType {
@@ -69,6 +71,7 @@ export default function BatchSend(): JSX.Element {
           messageDbId: null,
           status: 'pending',
           connectHintShown: false,
+          connectError: null,
         };
       });
       setDrafts(built);
@@ -141,11 +144,24 @@ export default function BatchSend(): JSX.Element {
   // into LinkedIn, never scrapes it, and never clicks anything on
   // linkedin.com itself; the human pastes the note and clicks LinkedIn's own
   // "Connect" button there manually.
+  const CONNECT_ERROR_MESSAGE = "Couldn't open LinkedIn — this contact's profile URL looks invalid. Edit it from Contacts.";
+
   const connectOnLinkedIn = async (draft: Draft) => {
     if (!draft.linkedinUrl) return;
-    await copyToClipboard(draft);
-    await api.shell.openExternal(draft.linkedinUrl);
-    updateDraft(draft.contactId, { connectHintShown: true });
+    try {
+      // Defensive re-normalization: contacts created before this fix may
+      // still have a protocol-less or otherwise malformed URL in the DB.
+      const openableUrl = toOpenableLinkedInUrl(draft.linkedinUrl);
+      if (!openableUrl) {
+        updateDraft(draft.contactId, { connectError: CONNECT_ERROR_MESSAGE });
+        return;
+      }
+      await copyToClipboard(draft);
+      await api.shell.openExternal(openableUrl);
+      updateDraft(draft.contactId, { connectHintShown: true, connectError: null });
+    } catch {
+      updateDraft(draft.contactId, { connectError: CONNECT_ERROR_MESSAGE });
+    }
   };
 
   // The ONLY way a contact's stage becomes "Outreach Sent" — always a
@@ -254,6 +270,9 @@ export default function BatchSend(): JSX.Element {
                 <p className="page-subtitle" style={{ marginTop: 6 }}>
                   Note copied — paste it in the invite dialog on LinkedIn, then click Connect there yourself.
                 </p>
+              )}
+              {d.connectError && (
+                <p style={{ color: 'var(--danger)', marginTop: 6 }}>{d.connectError}</p>
               )}
             </div>
           ))}

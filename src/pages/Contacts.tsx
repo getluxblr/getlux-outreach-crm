@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { PIPELINE_STAGES } from '../../shared/types';
+import { toOpenableLinkedInUrl } from '../../shared/linkedinUrl';
 import StageBadge from '../components/StageBadge';
+
+const LINKEDIN_URL_ERROR = 'Enter a valid LinkedIn profile URL, e.g. https://www.linkedin.com/in/your-handle';
 
 const EMPTY_ADD_FORM = {
   fullName: '',
@@ -67,11 +70,16 @@ export default function Contacts(): JSX.Element {
       setAddError('LinkedIn Profile URL is required.');
       return;
     }
+    const normalizedLinkedinUrl = toOpenableLinkedInUrl(addForm.linkedinUrl);
+    if (!normalizedLinkedinUrl) {
+      setAddError(LINKEDIN_URL_ERROR);
+      return;
+    }
     setAddBusy(true);
     try {
       await api.contacts.createManual({
         full_name: addForm.fullName.trim(),
-        linkedin_url: addForm.linkedinUrl.trim(),
+        linkedin_url: normalizedLinkedinUrl,
         company: addForm.company.trim() || null,
         position: addForm.position.trim() || null,
         pronouns_found: addForm.pronouns || null,
