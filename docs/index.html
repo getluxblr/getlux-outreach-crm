@@ -201,7 +201,7 @@ function buildDefaultContacts(){
       stage: q.qualified ? "Qualified" : "Skipped",
       connectionStatus: "Not Connected",
       templateId: null, message:null, messageStatus:"pending", // pending | copied | sent
-      sentAt:null, reply:null, existingConv:false, connectHintShown:false,
+      sentAt:null, reply:null, existingConv:false, connectHintShown:false, connectError:null,
     };
   });
 }
@@ -241,10 +241,10 @@ let complianceAccepted = false;
 let templatesTab = "Connection Message";
 let importState = { headers: null, rows: null, detected: false, connectionStatus: "Not Connected", summary: null, error: null };
 
-const pages = ["dashboard","linkedin","import","contacts","queue","batch","pipeline","campaigns","templates","settings"];
+const pages = ["dashboard","linkedin","import","contacts","batch","pipeline","campaigns","templates","settings"];
 const pageLabels = {
   dashboard:"📊 Dashboard", linkedin:"🔗 LinkedIn Data", import:"📥 Import CSV", contacts:"👥 Contacts",
-  queue:"✅ Qualified Queue", batch:"✉️ Batch Review & Send", pipeline:"🗂 Pipeline (Kanban)",
+  batch:"✉️ Batch Review & Send", pipeline:"🗂 Pipeline (Kanban)",
   campaigns:"🎯 Campaigns", templates:"📝 Templates", settings:"⚙️ Settings"
 };
 
@@ -263,7 +263,7 @@ function go(p){ currentPage=p; render(); }
 
 function stageBadge(stage){
   const map = {
-    "Qualified":"blue","Verified":"blue","Queued":"blue","Draft Ready":"blue","Approved":"blue",
+    "Qualified":"blue","Verified":"blue","Verification Pending":"blue","Queued":"blue","Draft Ready":"blue","Approved":"blue",
     "Draft Copied — Awaiting Manual Send":"amber",
     "Outreach Sent":"green","Delivered / Sent Successfully":"green","Replied":"green","Interested":"green","Won":"green",
     "Follow-up Required":"amber","Skipped":"amber","Not Interested":"red","Failed":"red","Do Not Contact":"red","Lost":"red","Existing Conversation":"amber"
@@ -310,7 +310,7 @@ function renderDashboard(){
   </div>
   <div class="panel">
     <h3>How this demo works</h3>
-    <div class="small">This is a fully interactive, in-browser preview of the Getlux Outreach CRM using the real sample contacts, qualification keywords, and message templates from the project. Every "send" here is a manual copy-to-clipboard action that you confirm yourself — nothing is ever sent anywhere automatically. Walk through <b>LinkedIn Data → Import → Contacts → Qualified Queue → Batch Review & Send → Pipeline</b> using the sidebar to see the actual workflow. The real Windows app (Electron + SQLite) mirrors this exact logic.</div>
+    <div class="small">This is a fully interactive, in-browser preview of the Getlux Outreach CRM using the real sample contacts, qualification keywords, and message templates from the project. Every "send" here is a manual copy-to-clipboard action that you confirm yourself — nothing is ever sent anywhere automatically. Walk through <b>LinkedIn Data → Import → Contacts → Batch Review & Send → Pipeline</b> using the sidebar to see the actual workflow — the qualified/verification queue actions now live right inside the Contacts table. The real Windows app (Electron + SQLite) mirrors this exact logic.</div>
   </div>`;
 }
 
@@ -429,6 +429,29 @@ function handleFileChosen(input){
   reader.readAsText(file);
 }
 
+// toOpenableLinkedInUrl: validates and normalizes a user-typed or
+// CSV-sourced LinkedIn profile URL into a well-formed, absolute,
+// directly-openable URL (protocol included) — mirrors
+// shared/linkedinUrl.ts's toOpenableLinkedInUrl() in the Electron app.
+// Returns null if empty, unparseable, or not a linkedin.com host.
+function toOpenableLinkedInUrl(raw){
+  if(!raw || typeof raw !== "string") return null;
+  let candidate = raw.trim();
+  if(!candidate) return null;
+  if(!/^https?:\/\//i.test(candidate)){
+    candidate = `https://${candidate}`;
+  }
+  let parsed;
+  try{
+    parsed = new URL(candidate);
+  }catch(e){
+    return null;
+  }
+  if(!parsed.hostname.toLowerCase().includes("linkedin.com")) return null;
+  return parsed.toString();
+}
+const LINKEDIN_URL_ERROR = "Enter a valid LinkedIn profile URL, e.g. https://www.linkedin.com/in/your-handle";
+
 function findHeader(headers, needle){
   return headers.find(h=>h.trim().toLowerCase()===needle) || headers.find(h=>h.trim().toLowerCase().includes(needle));
 }
@@ -456,19 +479,22 @@ function runImport(){
     const company = companyCol ? row[companyCol] : "";
     const position = positionCol ? row[positionCol] : "";
     if(!name || !url){ invalid++; return; }
-    const normalized = url.trim().toLowerCase().replace(/\/+$/,"");
+    const openableUrl = toOpenableLinkedInUrl(url);
+    if(!openableUrl){ invalid++; return; }
+    const normalized = openableUrl.trim().toLowerCase().replace(/\/+$/,"");
     if(seenUrls.has(normalized)){ duplicates++; return; }
     seenUrls.add(normalized);
     const q = isQualified(position, company);
     contacts.push({
       id: nextContactId++, name, role: position, company, pronouns: null,
-      linkedinUrl: normalized,
+      linkedinUrl: openableUrl,
       qualified: q.qualified, reason: q.reason,
       stage: q.qualified ? "Qualified" : "Imported",
       connectionStatus: importState.connectionStatus,
       templateId: null, message: null, messageStatus: "pending",
       sentAt: null, reply: null, existingConv: false,
       connectedOn: connectedOnCol ? row[connectedOnCol] : null,
+      connectHintShown: false, connectError: null,
     });
     imported++;
   });
@@ -529,15 +555,66 @@ function renderContacts(){
     <button class="btn primary" onclick="openAddConnection()">+ Add Connection</button>
   </div>
   <div class="panel">
-    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>LinkedIn</th><th>Connection status</th><th>Qualification</th><th>Stage</th></tr></thead>
+    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>LinkedIn</th><th>Connection status</th><th>Qualification</th><th>Stage</th><th>Action</th><th></th></tr></thead>
     <tbody>${contacts.map(c=>`<tr>
       <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.role)}</td><td>${escapeHtml(c.company)}</td>
       <td>${c.linkedinUrl ? `<a href="${escapeHtml(c.linkedinUrl)}" target="_blank" rel="noopener">profile</a>` : '<span class="small">—</span>'}</td>
       <td>${connectionBadge(c.connectionStatus)}</td>
       <td class="small">${escapeHtml(c.reason)}</td>
       <td>${stageBadge(c.stage)}</td>
+      <td>${contactStageAction(c)}</td>
+      <td><button class="btn" onclick="openEditConnection(${c.id})">Edit</button></td>
     </tr>`).join("")}</tbody></table>
   </div>`;
+}
+
+// Per-row action button for the Contacts table — this is where the former
+// standalone "Qualified Queue" and "Verification Queue" screens' single
+// actions now live, one action per contact depending on its current stage.
+// Nothing here ever talks to linkedin.com; "Run Mock Verification" is a
+// pure in-browser simulation, same as the mock-mode Electron app.
+function contactStageAction(c){
+  if(c.stage === "Qualified"){
+    return `<button class="btn primary" onclick="sendToVerification(${c.id})">Send to Verification</button>`;
+  }
+  if(c.stage === "Verification Pending"){
+    const busy = verifyBusyId === c.id;
+    return `<button class="btn primary" ${busy?'disabled':''} onclick="runMockVerification(${c.id})">${busy?'Verifying…':'Run Mock Verification'}</button>`;
+  }
+  return '<span class="small">—</span>';
+}
+
+function sendToVerification(id){
+  const c = contacts.find(x=>x.id===id);
+  if(!c) return;
+  c.stage = "Verification Pending";
+  saveContacts();
+  render();
+}
+
+// Run Mock Verification — mirrors the Electron app's mock-mode
+// verification (electron/services/verification.ts): simulates checking
+// current company/title and message availability, no real request is ever
+// made to linkedin.com. Mostly succeeds ("Verified"); occasionally
+// simulates a block reason, matching the real mock adapter's behavior.
+let verifyBusyId = null;
+function runMockVerification(id){
+  verifyBusyId = id;
+  render();
+  setTimeout(()=>{
+    const c = contacts.find(x=>x.id===id);
+    if(c){
+      if(Math.random() < 0.85){
+        c.stage = "Verified";
+      } else {
+        c.stage = "Skipped";
+        c.reason = "Current employer could not be verified. Contact skipped.";
+      }
+      saveContacts();
+    }
+    verifyBusyId = null;
+    render();
+  }, 500);
 }
 
 /* ---------------- ADD CONNECTION (single manual entry, no CSV needed) ----------------
@@ -546,50 +623,63 @@ function renderContacts(){
    default pipeline stage) — this is a convenience for logging one person
    at a time, not a bulk import, and never touches linkedin.com itself. */
 let addConnectionOpen = false;
-function openAddConnection(){ addConnectionOpen = true; render(); }
-function closeAddConnection(){ addConnectionOpen = false; render(); }
+// When set, the modal is in "Edit" mode for this contact id instead of
+// "Add Connection" mode — same form/styling, pre-filled, writes back to
+// the existing contact instead of pushing a new one.
+let editingContactId = null;
+
+function openAddConnection(){ addConnectionOpen = true; editingContactId = null; render(); }
+function closeAddConnection(){ addConnectionOpen = false; editingContactId = null; render(); }
+
+function openEditConnection(id){
+  editingContactId = id;
+  addConnectionOpen = false;
+  render();
+}
 
 function renderAddConnectionModal(){
+  const editing = editingContactId !== null ? contacts.find(c=>c.id===editingContactId) : null;
+  const title = editing ? 'Edit Contact' : 'Add Connection';
+  const subtitle = editing
+    ? 'Fix or update this contact\'s details — for example, correct a bad or missing LinkedIn URL.'
+    : 'Manually log one person you already know — creates a contact the same way importing a CSV row would. This is not a bulk import; use Import CSV for a full file.';
   return `
   <div class="modal-bg"><div class="modal">
-    <h2>Add Connection</h2>
-    <div class="small" style="margin-bottom:14px;">
-      Manually log one person you already know — creates a contact the same way importing a CSV row would. This is
-      not a bulk import; use Import CSV for a full file.
-    </div>
+    <h2>${title}</h2>
+    <div class="small" style="margin-bottom:14px;">${subtitle}</div>
     <div style="margin-bottom:10px;">
       <label class="field-label">Name</label>
-      <input type="text" id="ac-name" style="width:100%;" placeholder="Full name" />
+      <input type="text" id="ac-name" style="width:100%;" placeholder="Full name" value="${editing ? escapeHtml(editing.name) : ''}" />
     </div>
     <div style="margin-bottom:10px;">
       <label class="field-label">Company</label>
-      <input type="text" id="ac-company" style="width:100%;" />
+      <input type="text" id="ac-company" style="width:100%;" value="${editing ? escapeHtml(editing.company||'') : ''}" />
     </div>
     <div style="margin-bottom:10px;">
       <label class="field-label">Position / Title</label>
-      <input type="text" id="ac-position" style="width:100%;" />
+      <input type="text" id="ac-position" style="width:100%;" value="${editing ? escapeHtml(editing.role||'') : ''}" />
     </div>
     <div style="margin-bottom:10px;">
       <label class="field-label">LinkedIn Profile URL</label>
-      <input type="text" id="ac-url" style="width:100%;" placeholder="https://www.linkedin.com/in/..." />
+      <input type="text" id="ac-url" style="width:100%;" placeholder="https://www.linkedin.com/in/..." value="${editing ? escapeHtml(editing.linkedinUrl||'') : ''}" />
     </div>
     <div style="margin-bottom:10px;">
       <label class="field-label">Pronoun (used only for the explicit greeting rule — never inferred from name)</label>
       <select id="ac-pronouns" style="width:100%;">
-        <option value="">Not specified</option>
-        <option value="He/Him">He/Him</option>
-        <option value="She/Her">She/Her</option>
+        <option value="" ${editing && !editing.pronouns ? 'selected' : ''}>Not specified</option>
+        <option value="He/Him" ${editing && editing.pronouns==='He/Him' ? 'selected' : ''}>He/Him</option>
+        <option value="She/Her" ${editing && editing.pronouns==='She/Her' ? 'selected' : ''}>She/Her</option>
       </select>
     </div>
     <div style="margin-bottom:18px;">
       <label class="field-label">Connection status</label>
       <select id="ac-status" style="width:100%;">
-        <option value="Connected" selected>Connected (already connected on LinkedIn)</option>
-        <option value="Not Connected">Not Connected (logging a prospect I haven't imported)</option>
+        <option value="Connected" ${!editing || editing.connectionStatus==='Connected' ? 'selected' : ''}>Connected (already connected on LinkedIn)</option>
+        <option value="Not Connected" ${editing && editing.connectionStatus==='Not Connected' ? 'selected' : ''}>Not Connected (logging a prospect I haven't imported)</option>
       </select>
     </div>
     <div class="row">
-      <button class="btn primary" onclick="submitAddConnection()">Add Connection</button>
+      <button class="btn primary" onclick="${editing ? 'submitEditConnection()' : 'submitAddConnection()'}">${editing ? 'Save Changes' : 'Add Connection'}</button>
       <button class="btn" onclick="closeAddConnection()">Cancel</button>
     </div>
   </div></div>`;
@@ -604,8 +694,12 @@ function submitAddConnection(){
   const connectionStatus = document.getElementById('ac-status').value;
 
   if(!name){ alert('Name is required.'); return; }
+  if(!urlRaw){ alert('LinkedIn Profile URL is required.'); return; }
 
-  const normalized = urlRaw ? urlRaw.trim().toLowerCase().replace(/\/+$/,"") : "";
+  const openableUrl = toOpenableLinkedInUrl(urlRaw);
+  if(!openableUrl){ alert(LINKEDIN_URL_ERROR); return; }
+
+  const normalized = openableUrl.trim().toLowerCase().replace(/\/+$/,"");
   if(normalized && contacts.some(c => (c.linkedinUrl||"").toLowerCase().replace(/\/+$/,"") === normalized)){
     alert('A contact with this LinkedIn URL already exists.');
     return;
@@ -615,35 +709,55 @@ function submitAddConnection(){
   const q = isQualified(position, company);
   contacts.push({
     id: nextContactId++, name, role: position, company, pronouns,
-    linkedinUrl: urlRaw || null,
+    linkedinUrl: openableUrl,
     qualified: q.qualified, reason: q.reason,
     stage: q.qualified ? "Qualified" : "Imported",
     connectionStatus,
     templateId: null, message: null, messageStatus: "pending",
     sentAt: null, reply: null, existingConv: false,
-    connectedOn: null, connectHintShown: false,
+    connectedOn: null, connectHintShown: false, connectError: null,
   });
   saveContacts();
   addConnectionOpen = false;
   render();
 }
 
-function renderQueue(){
-  const q = contacts.filter(c=>c.qualified && c.messageStatus!=="sent");
-  return `
-  <div class="topbar"><div><h1>Qualified Contacts Queue</h1><div class="sub">${q.length} qualified contacts ready for drafting</div></div>
-    <button class="btn primary" onclick="go('batch')">Open Batch Review →</button>
-  </div>
-  <div class="panel">
-    <table><thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Connection status</th><th>Draft template on send</th><th>Pronouns</th><th>Greeting</th><th>Qualification reason</th></tr></thead>
-    <tbody>${q.map(c=>`<tr>
-      <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.role)}</td><td>${escapeHtml(c.company)}</td>
-      <td>${connectionBadge(c.connectionStatus)}</td>
-      <td>${templateTypeFor(c)}</td>
-      <td>${c.pronouns||'—'}</td>
-      <td>${greeting(c.pronouns)}</td><td class="small">${escapeHtml(c.reason)}</td>
-    </tr>`).join("")}</tbody></table>
-  </div>`;
+// Edit an existing contact in place — same validation/normalization as
+// Add Connection (including the LinkedIn URL check), so bad stored URLs
+// like the ones on manually-added contacts can be corrected here.
+function submitEditConnection(){
+  const c = contacts.find(x=>x.id===editingContactId);
+  if(!c) return;
+
+  const name = document.getElementById('ac-name').value.trim();
+  const company = document.getElementById('ac-company').value.trim();
+  const position = document.getElementById('ac-position').value.trim();
+  const urlRaw = document.getElementById('ac-url').value.trim();
+  const pronouns = document.getElementById('ac-pronouns').value || null;
+  const connectionStatus = document.getElementById('ac-status').value;
+
+  if(!name){ alert('Name is required.'); return; }
+  if(!urlRaw){ alert('LinkedIn Profile URL is required.'); return; }
+
+  const openableUrl = toOpenableLinkedInUrl(urlRaw);
+  if(!openableUrl){ alert(LINKEDIN_URL_ERROR); return; }
+
+  const normalized = openableUrl.trim().toLowerCase().replace(/\/+$/,"");
+  if(normalized && contacts.some(x => x.id !== c.id && (x.linkedinUrl||"").toLowerCase().replace(/\/+$/,"") === normalized)){
+    alert('A contact with this LinkedIn URL already exists.');
+    return;
+  }
+
+  c.name = name;
+  c.company = company;
+  c.role = position;
+  c.linkedinUrl = openableUrl;
+  c.pronouns = pronouns;
+  c.connectionStatus = connectionStatus;
+
+  saveContacts();
+  editingContactId = null;
+  render();
 }
 
 /* ---------------- BATCH REVIEW & SEND (copy-to-clipboard, manual mark-sent) ---------------- */
@@ -694,6 +808,7 @@ function renderBatch(){
             </button>
           </div>
           ${c.connectHintShown ? '<div class="small" style="margin-top:6px;">Note copied — paste it in the invite dialog on LinkedIn, then click Connect there yourself.</div>' : ''}
+          ${c.connectError ? `<div class="small" style="margin-top:6px;color:var(--red);">${escapeHtml(c.connectError)}</div>` : ''}
         </div>`;
       }).join("")}
     </div>`;
@@ -733,12 +848,27 @@ async function copyDraftToClipboard(id){
 // LinkedIn's own "Connect" button and paste the note themselves. This
 // NEVER logs into LinkedIn, never scrapes it, and never clicks anything on
 // linkedin.com itself — it only opens a tab, exactly like clicking a link.
+const CONNECT_ERROR_MESSAGE = "Couldn't open LinkedIn — this contact's profile URL looks invalid. Edit it from Contacts.";
 async function connectOnLinkedIn(id){
   const c = contacts.find(x=>x.id===id);
   if(!c || !c.linkedinUrl) return;
-  await copyDraftToClipboard(id);
-  window.open(c.linkedinUrl, '_blank', 'noopener');
-  c.connectHintShown = true;
+  try{
+    // Defensive re-normalization: contacts created before this fix may
+    // still have a protocol-less or otherwise malformed URL stored.
+    const openableUrl = toOpenableLinkedInUrl(c.linkedinUrl);
+    if(!openableUrl){
+      c.connectError = CONNECT_ERROR_MESSAGE;
+      saveContacts();
+      render();
+      return;
+    }
+    await copyDraftToClipboard(id);
+    window.open(openableUrl, '_blank', 'noopener');
+    c.connectHintShown = true;
+    c.connectError = null;
+  }catch(e){
+    c.connectError = CONNECT_ERROR_MESSAGE;
+  }
   saveContacts();
   render();
 }
@@ -858,7 +988,7 @@ function render(){
   const main = document.getElementById("main");
   const renderers = {
     dashboard:renderDashboard, linkedin:renderLinkedInPage, import:renderImport, contacts:renderContacts,
-    queue:renderQueue, batch:renderBatch, pipeline:renderPipeline, campaigns:renderCampaigns,
+    batch:renderBatch, pipeline:renderPipeline, campaigns:renderCampaigns,
     templates:renderTemplates, settings:renderSettings,
   };
   main.innerHTML = renderers[currentPage]();
@@ -878,7 +1008,7 @@ function renderModal(){
     </div></div>`;
     return;
   }
-  if(addConnectionOpen){
+  if(addConnectionOpen || editingContactId !== null){
     root.innerHTML = renderAddConnectionModal();
     return;
   }
