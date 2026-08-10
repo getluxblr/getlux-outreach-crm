@@ -85,7 +85,13 @@ export function toOpenableLinkedInUrl(raw: string): string | null {
     return null;
   }
 
-  if (!parsed.hostname.toLowerCase().includes('linkedin.com')) {
+  const host = parsed.hostname.toLowerCase();
+  // Accept both the main linkedin.com domain (and its country subdomains,
+  // e.g. in.linkedin.com) and lnkd.in — LinkedIn's own short-link domain,
+  // which is what the mobile app's "Share profile" button generates. These
+  // are genuine LinkedIn-owned links, not a different site.
+  const isLinkedInHost = host.includes('linkedin.com') || host === 'lnkd.in' || host.endsWith('.lnkd.in');
+  if (!isLinkedInHost) {
     return null;
   }
 
