@@ -447,7 +447,12 @@ function toOpenableLinkedInUrl(raw){
   }catch(e){
     return null;
   }
-  if(!parsed.hostname.toLowerCase().includes("linkedin.com")) return null;
+  const host = parsed.hostname.toLowerCase();
+  // Accept the main linkedin.com domain (incl. country subdomains like
+  // in.linkedin.com) and lnkd.in — LinkedIn's own short-link domain, which
+  // is what the mobile app's "Share profile" button generates.
+  const isLinkedInHost = host.includes("linkedin.com") || host === "lnkd.in" || host.endsWith(".lnkd.in");
+  if(!isLinkedInHost) return null;
   return parsed.toString();
 }
 const LINKEDIN_URL_ERROR = "Enter a valid LinkedIn profile URL, e.g. https://www.linkedin.com/in/your-handle";
