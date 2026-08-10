@@ -1,7 +1,10 @@
 import Papa from 'papaparse';
 import { upsertContactFromImport, ImportOutcome } from '../db/queries/contacts';
 import { isQualified } from '../../shared/qualification';
+import { toOpenableLinkedInUrl } from '../../shared/linkedinUrl';
 import { logActivity } from '../db/queries/activity';
+
+const LINKEDIN_URL_ERROR = 'Enter a valid LinkedIn profile URL, e.g. https://www.linkedin.com/in/your-handle';
 
 export interface CsvFieldMapping {
   firstName?: string;
@@ -110,11 +113,17 @@ export function importCsv(
       continue;
     }
 
+    const normalized_linkedin_url = toOpenableLinkedInUrl(linkedin_url);
+    if (!normalized_linkedin_url) {
+      summary.invalid++;
+      continue;
+    }
+
     const qualification = isQualified(csv_position, '', csv_company);
 
     const { outcome } = upsertContactFromImport({
       full_name,
-      linkedin_url,
+      linkedin_url: normalized_linkedin_url,
       csv_company,
       csv_position,
       email,
@@ -158,14 +167,18 @@ export function createManualContact(input: ManualContactInput): { outcome: Impor
   const full_name = (input.full_name || '').trim();
   const csv_company = input.company?.trim() || null;
   const csv_position = input.position?.trim() || null;
-  const linkedin_url = (input.linkedin_url || '').trim();
+  const rawLinkedinUrl = (input.linkedin_url || '').trim();
+  const linkedin_url = toOpenableLinkedInUrl(rawLinkedinUrl);
+  if (rawLinkedinUrl && !linkedin_url) {
+    throw new Error(LINKEDIN_URL_ERROR);
+  }
   const connection_status = input.connection_status || 'Connected';
 
   const qualification = isQualified(csv_position, '', csv_company);
 
   const result = upsertContactFromImport({
     full_name,
-    linkedin_url,
+    linkedin_url: linkedin_url || '',
     csv_company,
     csv_position,
     source_filename: 'Manual entry (Add Connection)',
