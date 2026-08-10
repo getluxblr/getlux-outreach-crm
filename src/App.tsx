@@ -9,8 +9,6 @@ import LinkedInData from './pages/LinkedInData';
 import ImportCsv from './pages/ImportCsv';
 import Contacts from './pages/Contacts';
 import Companies from './pages/Companies';
-import QualifiedQueue from './pages/QualifiedQueue';
-import VerificationQueue from './pages/VerificationQueue';
 import BatchSend from './pages/BatchSend';
 import Campaigns from './pages/Campaigns';
 import Messages from './pages/Messages';
@@ -43,8 +41,6 @@ export default function App(): JSX.Element {
           <Route path="/import" element={<ImportCsv />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/companies" element={<Companies />} />
-          <Route path="/qualified-queue" element={<QualifiedQueue />} />
-          <Route path="/verification-queue" element={<VerificationQueue />} />
           <Route path="/batch-send" element={<BatchSend />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/messages" element={<Messages />} />
